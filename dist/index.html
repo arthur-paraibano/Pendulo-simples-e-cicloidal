@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pêndulo — Fórmula Completa</title>
+    <meta
+      name="description"
+      content="Simulador didático da fórmula geral do período do pêndulo, nos regimes simples e cicloidal."
+    />
+    <script type="module" crossorigin src="./assets/index-DTgPYeNV.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B0lwwgL7.css">
+  </head>
+  <body>
+    <!--
+      Casca da aplicação. A ordem vertical dos marcos é requisito de produto
+      (RF-127, RF-131, RF-140), derivada do esboço do usuário:
+
+          seletor de visualização  →  cena  →  fórmula  →  tabela de coleta
+
+      Cada região é preenchida pela camada `ui/` nas fases seguintes.
+    -->
+    <div id="app">
+      <header id="cabecalho"></header>
+      <nav id="seletor-visualizacao" aria-label="Visualização"></nav>
+      <main id="principal">
+        <section id="cena" aria-label="Cena do pêndulo"></section>
+        <section id="formula" aria-label="Fórmula do período"></section>
+        <section id="tabela-coleta" aria-label="Tabela de coleta de dados"></section>
+      </main>
+      <aside id="painel-parametros" aria-label="Parâmetros"></aside>
+    </div>
+  </body>
+</html>

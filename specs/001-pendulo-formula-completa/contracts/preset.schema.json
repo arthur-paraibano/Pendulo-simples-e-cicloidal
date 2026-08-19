@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/pendulo/preset.schema.json",
+  "title": "Preset / Cenário do Simulador de Pêndulo",
+  "description": "Arquivo de cenário do projeto 001-pendulo-formula-completa. Armazena apenas os parâmetros que diferem do padrão do esquema, opcionalmente com as medições coletadas.",
+  "type": "object",
+  "required": ["versaoEsquema", "id", "nome", "parametros"],
+  "additionalProperties": false,
+  "properties": {
+    "versaoEsquema": {
+      "type": "integer",
+      "const": 1,
+      "description": "Versão do formato do arquivo. Versão desconhecida deve gerar aviso, nunca falha silenciosa."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+      "description": "Identificador estável em kebab-case."
+    },
+    "nome": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "descricao": { "type": "string", "maxLength": 500 },
+    "origem": {
+      "type": "string",
+      "enum": ["fabrica", "usuario", "arquivo"],
+      "default": "usuario"
+    },
+    "criadoEm": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de criação em ISO 8601."
+    },
+    "visualizacao": {
+      "type": "string",
+      "enum": ["simples", "cicloidal", "ambos"],
+      "default": "simples",
+      "description": "Layout selecionado (RF-127)."
+    },
+    "parametros": {
+      "type": "object",
+      "description": "Mapa id -> valor, contendo APENAS os parâmetros que diferem do padrão. Ids devem existir no esquema (P01..P112). Valores numéricos na unidade de exibição declarada pelo esquema (ângulos em graus).",
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "number" },
+          { "type": "boolean" },
+          { "type": "string" },
+          { "type": "array", "items": { "type": "string" } }
+        ]
+      },
+      "examples": [
+        { "modo": "simples", "L": 1, "alpha": 10, "g": 9.81, "N": 2 },
+        { "modo": "cicloidal", "L": 1, "alpha": 45, "g": 9.81, "n_m": 3 }
+      ]
+    },
+    "incluiMedicoes": { "type": "boolean", "default": false },
+    "medicoes": {
+      "type": "array",
+      "maxItems": 10000,
+      "description": "Linhas da tabela de coleta. Só é lido quando incluiMedicoes for verdadeiro.",
+      "items": {
+        "type": "object",
+        "required": ["n", "pendulo", "T", "gInferido", "alpha", "L"],
+        "additionalProperties": false,
+        "properties": {
+          "n": { "type": "integer", "minimum": 1, "description": "Número sequencial." },
+          "pendulo": { "type": "string", "enum": ["simples", "cicloidal"] },
+          "T": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Período medido, em segundos."
+          },
+          "grandeza": {
+            "type": "string",
+            "enum": ["meioPeriodo", "periodoCompleto"],
+            "default": "periodoCompleto",
+            "description": "O que a coluna T representa (RF-137)."
+          },
+          "gInferido": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Gravidade inferida do período, em m/s^2 (RF-142, RF-143)."
+          },
+          "gInferidoIngenuo": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Gravidade por 4*pi^2*L/T^2, sem termos de correção (RF-144)."
+          },
+          "gConfigurado": { "type": "number", "exclusiveMinimum": 0 },
+          "alpha": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 179.9,
+            "description": "Amplitude no instante da coleta, em graus."
+          },
+          "L": { "type": "number", "exclusiveMinimum": 0, "maximum": 10 },
+          "Tteorico": { "type": "number", "exclusiveMinimum": 0 },
+          "Texato": { "type": "number", "exclusiveMinimum": 0 },
+          "erroRelativo": { "type": "number" },
+          "N": { "type": "integer", "minimum": 0, "maximum": 50 },
+          "tColeta": { "type": "number", "minimum": 0 },
+          "origem": { "type": "string", "enum": ["automatica", "manual"] }
+        }
+      }
+    },
+    "roteiro": {
+      "type": "object",
+      "description": "Roteiro guiado opcional embutido no cenário.",
+      "required": ["titulo", "passos"],
+      "additionalProperties": false,
+      "properties": {
+        "titulo": { "type": "string", "minLength": 1 },
+        "descricao": { "type": "string" },
+        "nivel": { "type": "string", "enum": ["introdutorio", "intermediario", "avancado"] },
+        "passos": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["ordem", "titulo", "texto"],
+            "additionalProperties": false,
+            "properties": {
+              "ordem": { "type": "integer", "minimum": 1 },
+              "titulo": { "type": "string", "minLength": 1 },
+              "texto": { "type": "string", "minLength": 1 },
+              "parametrosAplicados": { "type": "object", "additionalProperties": true },
+              "pergunta": { "type": "string" },
+              "respostaEsperada": { "type": "number" },
+              "toleranciaResposta": { "type": "number", "exclusiveMinimum": 0 },
+              "destaque": {
+                "type": "string",
+                "description": "Elemento a realçar: 'formula.termo.2', 'tabela.coluna.g', 'param.alpha', 'cena.sensor'."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "versaoEsquema": 1,
+      "id": "experimento-roteiro-alemao",
+      "nome": "Experimento do roteiro alemão (1 m)",
+      "descricao": "Pêndulo de 1 m com sensor em meio período, reproduzindo o Zykloidenpendel.",
+      "origem": "fabrica",
+      "visualizacao": "ambos",
+      "parametros": { "L": 1, "g": 9.81, "alpha": 10, "N": 2, "MODT": "meioPeriodo", "TAB": true },
+      "incluiMedicoes": false
+    }
+  ]
+}

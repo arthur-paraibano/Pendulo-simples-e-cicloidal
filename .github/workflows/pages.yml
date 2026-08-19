@@ -1,0 +1,74 @@
+name: Verificar e publicar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Portões de qualidade
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # ── Portão G1: regra de dependência entre camadas e estilo ────────────
+      - name: Lint
+        run: npm run lint
+
+      # ── Portão G2: tipos ──────────────────────────────────────────────────
+      - name: Verificação de tipos
+        run: npm run typecheck
+
+      # ── Portão G3: física correta (Princípio I) ───────────────────────────
+      - name: Testes unitários e cobertura
+        run: npx vitest run --coverage
+
+      # ── Portão G4: build dos dois alvos ───────────────────────────────────
+      - name: Build (pages)
+        run: npx vite build
+
+      - name: Build (arquivo único offline)
+        run: npx vite build --config vite.config.singlefile.ts
+
+      # ── Portão G5: orçamento de tamanho (Princípio VII / RNF-012) ─────────
+      - name: Orçamento de tamanho
+        run: node scripts/verificar-tamanho.mjs
+
+      - name: Publicar artefato do site
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publicar:
+    name: Publicar no GitHub Pages
+    needs: verificar
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

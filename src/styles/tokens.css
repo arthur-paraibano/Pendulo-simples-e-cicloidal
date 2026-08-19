@@ -1,0 +1,237 @@
+/*
+ * Tokens de estilo — fonte única das cores, espaçamentos e tipografia.
+ *
+ * Três temas (P69): claro, escuro e alto contraste. O tema é escolhido por
+ * `data-tema` no elemento raiz; sem atributo, segue a preferência do sistema.
+ *
+ * Princípio VI: contraste mínimo AA, e nenhuma informação codificada apenas
+ * por cor — cada série também recebe traço e marcador próprios (RF-121).
+ */
+
+:root {
+  /* ── Superfícies e texto ─────────────────────────────────────────────── */
+  --cor-fundo: #ffffff;
+  --cor-fundo-painel: #f6f7f9;
+  --cor-fundo-elevado: #ffffff;
+  --cor-borda: #d6d9de;
+  --cor-borda-forte: #a8adb6;
+  --cor-texto: #16181d;
+  --cor-texto-suave: #565c66;
+  --cor-texto-inverso: #ffffff;
+
+  /* ── Identidade ──────────────────────────────────────────────────────── */
+  --cor-acento: #1f6feb;
+  --cor-acento-suave: #dbeafe;
+  --cor-foco: #1f6feb;
+
+  /* ── Semântica dos dois regimes (usar SEMPRE junto de traço distinto) ── */
+  --cor-pendulo-simples: #b3261e;
+  --cor-pendulo-cicloidal: #1f6feb;
+  --cor-referencia-t0: #6b7280;
+  --cor-valor-exato: #0f766e;
+
+  /* ── Faixas de confiança da série (RF-013) ───────────────────────────── */
+  --cor-confianca-excelente: #15803d;
+  --cor-confianca-boa: #4d7c0f;
+  --cor-confianca-limitada: #b45309;
+  --cor-confianca-inadequada: #b3261e;
+
+  /* ── Energia ─────────────────────────────────────────────────────────── */
+  --cor-energia-cinetica: #1f6feb;
+  --cor-energia-potencial: #7c3aed;
+  --cor-energia-termica: #b45309;
+  --cor-energia-total: #16181d;
+
+  /* ── Cena ────────────────────────────────────────────────────────────── */
+  --cor-cena-fundo: #fbfcfd;
+  --cor-cena-grade: #e6e8ec;
+  --cor-cena-eixo: #9aa0aa;
+  --cor-face-cicloidal: #16181d;
+  --cor-trajetoria: #9aa0aa;
+  --cor-sensor: #15803d;
+  --cor-sensor-disparo: #22c55e;
+
+  /* ── Tipografia ──────────────────────────────────────────────────────── */
+  --fonte-interface: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fonte-numerica: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --tam-texto-pequeno: 0.8125rem;
+  --tam-texto: 0.9375rem;
+  --tam-texto-grande: 1.125rem;
+  --tam-titulo: 1.375rem;
+
+  /* ── Espaçamento e forma ─────────────────────────────────────────────── */
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-6: 1.5rem;
+  --esp-8: 2rem;
+  --raio: 6px;
+  --raio-grande: 10px;
+  --sombra: 0 1px 2px rgb(0 0 0 / 8%), 0 2px 8px rgb(0 0 0 / 4%);
+  --largura-foco: 2px;
+
+  /* ── Movimento (respeitado por prefers-reduced-motion) ───────────────── */
+  --duracao-rapida: 120ms;
+  --duracao-media: 240ms;
+}
+
+/* ── Tema escuro por preferência do sistema ───────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']):not([data-tema='alto-contraste']) {
+    --cor-fundo: #0f1116;
+    --cor-fundo-painel: #171a21;
+    --cor-fundo-elevado: #1d212a;
+    --cor-borda: #2b303b;
+    --cor-borda-forte: #454c5a;
+    --cor-texto: #e8eaee;
+    --cor-texto-suave: #a0a7b4;
+    --cor-texto-inverso: #0f1116;
+
+    --cor-acento: #6ea8fe;
+    --cor-acento-suave: #1c2b45;
+    --cor-foco: #6ea8fe;
+
+    --cor-pendulo-simples: #ff7b72;
+    --cor-pendulo-cicloidal: #6ea8fe;
+    --cor-referencia-t0: #8b93a1;
+    --cor-valor-exato: #2dd4bf;
+
+    --cor-confianca-excelente: #4ade80;
+    --cor-confianca-boa: #a3e635;
+    --cor-confianca-limitada: #fbbf24;
+    --cor-confianca-inadequada: #ff7b72;
+
+    --cor-energia-cinetica: #6ea8fe;
+    --cor-energia-potencial: #c4b5fd;
+    --cor-energia-termica: #fbbf24;
+    --cor-energia-total: #e8eaee;
+
+    --cor-cena-fundo: #12151b;
+    --cor-cena-grade: #232833;
+    --cor-cena-eixo: #6b7280;
+    --cor-face-cicloidal: #e8eaee;
+    --cor-trajetoria: #6b7280;
+    --cor-sensor: #4ade80;
+    --cor-sensor-disparo: #86efac;
+
+    --sombra: 0 1px 2px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 25%);
+  }
+}
+
+/* ── Tema escuro explícito ────────────────────────────────────────────── */
+:root[data-tema='escuro'] {
+  --cor-fundo: #0f1116;
+  --cor-fundo-painel: #171a21;
+  --cor-fundo-elevado: #1d212a;
+  --cor-borda: #2b303b;
+  --cor-borda-forte: #454c5a;
+  --cor-texto: #e8eaee;
+  --cor-texto-suave: #a0a7b4;
+  --cor-texto-inverso: #0f1116;
+
+  --cor-acento: #6ea8fe;
+  --cor-acento-suave: #1c2b45;
+  --cor-foco: #6ea8fe;
+
+  --cor-pendulo-simples: #ff7b72;
+  --cor-pendulo-cicloidal: #6ea8fe;
+  --cor-referencia-t0: #8b93a1;
+  --cor-valor-exato: #2dd4bf;
+
+  --cor-confianca-excelente: #4ade80;
+  --cor-confianca-boa: #a3e635;
+  --cor-confianca-limitada: #fbbf24;
+  --cor-confianca-inadequada: #ff7b72;
+
+  --cor-energia-cinetica: #6ea8fe;
+  --cor-energia-potencial: #c4b5fd;
+  --cor-energia-termica: #fbbf24;
+  --cor-energia-total: #e8eaee;
+
+  --cor-cena-fundo: #12151b;
+  --cor-cena-grade: #232833;
+  --cor-cena-eixo: #6b7280;
+  --cor-face-cicloidal: #e8eaee;
+  --cor-trajetoria: #6b7280;
+  --cor-sensor: #4ade80;
+  --cor-sensor-disparo: #86efac;
+
+  --sombra: 0 1px 2px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+/* ── Alto contraste ───────────────────────────────────────────────────── */
+:root[data-tema='alto-contraste'] {
+  --cor-fundo: #000000;
+  --cor-fundo-painel: #000000;
+  --cor-fundo-elevado: #000000;
+  --cor-borda: #ffffff;
+  --cor-borda-forte: #ffffff;
+  --cor-texto: #ffffff;
+  --cor-texto-suave: #ffffff;
+  --cor-texto-inverso: #000000;
+
+  --cor-acento: #ffff00;
+  --cor-acento-suave: #333300;
+  --cor-foco: #ffff00;
+
+  --cor-pendulo-simples: #ff6666;
+  --cor-pendulo-cicloidal: #66ccff;
+  --cor-referencia-t0: #ffffff;
+  --cor-valor-exato: #66ffcc;
+
+  --cor-confianca-excelente: #66ff66;
+  --cor-confianca-boa: #ccff66;
+  --cor-confianca-limitada: #ffcc00;
+  --cor-confianca-inadequada: #ff6666;
+
+  --cor-energia-cinetica: #66ccff;
+  --cor-energia-potencial: #cc99ff;
+  --cor-energia-termica: #ffcc00;
+  --cor-energia-total: #ffffff;
+
+  --cor-cena-fundo: #000000;
+  --cor-cena-grade: #444444;
+  --cor-cena-eixo: #ffffff;
+  --cor-face-cicloidal: #ffffff;
+  --cor-trajetoria: #cccccc;
+  --cor-sensor: #66ff66;
+  --cor-sensor-disparo: #ffff00;
+
+  --largura-foco: 3px;
+  --sombra: none;
+}
+
+/* ── Movimento reduzido (RF-122) ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duracao-rapida: 0ms;
+    --duracao-media: 0ms;
+  }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-family: var(--fonte-interface);
+  font-size: var(--tam-texto);
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: var(--largura-foco) solid var(--cor-foco);
+  outline-offset: 2px;
+}
