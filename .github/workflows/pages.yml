@@ -41,6 +41,12 @@ jobs:
       - name: Testes unitários e cobertura
         run: npx vitest run --coverage
 
+      - name: Instalar navegadores dos testes E2E
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Testes ponta a ponta
+        run: npx playwright test
+
       # ── Portão G4: build dos dois alvos ───────────────────────────────────
       - name: Build (pages)
         run: npx vite build

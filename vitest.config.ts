@@ -8,10 +8,10 @@ export default defineConfig({
     reporters: ['default'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html', 'json-summary'],
-      // A física é o que não pode estar errado; o estado é o que não pode
-      // perder dados. Os dois entram no mesmo limiar.
-      include: ['src/physics/**/*.ts', 'src/state/**/*.ts'],
+      reporter: ['text', 'html', 'json', 'json-summary'],
+      // Todo subsistema entregue entra na instrumentação; o bootstrap DOM fica
+      // fino e a orquestração testável vive nos módulos de src/app.
+      include: ['src/physics/**/*.ts', 'src/state/**/*.ts', 'src/render/**/*.ts', 'src/app/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/state/tipos.ts'],
       // Princípio I: o núcleo de física é o que não pode estar errado.
       // O limiar é deliberadamente alto e vale por arquivo, não só no agregado.
