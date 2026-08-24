@@ -103,12 +103,28 @@ expressão, e parâmetros amplamente configuráveis — é este produto.
 
 ```
 constitution ──▶ specify ──▶ plan ──▶ tasks ──▶ implement
-     ✅            ✅          ✅        ✅          ⬜
+     ✅            ✅          ✅        ✅          🔨
 ```
 
-**Estado atual**: documentação do Spec Kit **concluída**. Implementação **pendente**.
+**Estado atual**: documentação do Spec Kit **concluída**; implementação **em andamento**.
 
-Para prosseguir, execute as tarefas de [tasks.md](specs/001-pendulo-formula-completa/tasks.md) em
-ordem, começando pela Fase 0. Cada fase tem um portão de saída verificável, e as tarefas de teste
-precedem as de implementação — as tabelas numéricas de
+| Fase | Entrega | Estado |
+|---|---|---|
+| 0 · Fundação | Vite, TypeScript estrito, regra de dependência no lint, CI | ✅ |
+| 1 · Núcleo de física | Série, AGM, período, aproximações, cicloide, energia | ✅ |
+| 2 · Motor dinâmico | Integradores, sensor do ponto zero, inferência de `g` | ✅ |
+| 3 · Estado | Os 112 parâmetros, store, URL, presets, console | ✅ |
+| 4 · Cena | Canvas em três camadas, faces cicloidais, instrumentos | ✅ |
+| 5 · Fórmula e parâmetros | Fórmula viva em KaTeX, controles, painel de derivados | ✅ |
+| 5b · Parâmetros indexados | `L₁`, `h₂`, acoplar/desacoplar, alturas independentes | ⬜ |
+| 6 · Tabela de coleta | A tabela de `T` e `g` sob a fórmula | ⬜ |
+| 7–10 | Gráficos, presets, roteiros, i18n, acessibilidade, entrega | ⬜ |
+
+**Como está verificado hoje**: 653 testes unitários com cobertura por arquivo acima de 99 % em
+`physics`, `state`, `render` e `app`; 48 cenários de ponta a ponta em Chromium e Firefox; build de
+370,3 kB comprimidos para Pages e 734,9 kB no arquivo único offline, ambos sem requisição externa.
+
+Para prosseguir, execute as tarefas de [tasks.md](specs/001-pendulo-formula-completa/tasks.md) a
+partir da Fase 6. Cada fase tem um portão de saída verificável, e as tarefas de teste precedem as de
+implementação — as tabelas numéricas de
 [research.md](specs/001-pendulo-formula-completa/research.md) são a fonte de verdade das fixtures.

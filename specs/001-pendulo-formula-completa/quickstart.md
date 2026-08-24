@@ -45,6 +45,12 @@ npm run lint           # ESLint, inclusive a regra de dependência entre camadas
 no topo, a cena do pêndulo simples, a fórmula logo abaixo e a tabela de coleta vazia sob a fórmula,
 com `α = 10,0°`, `L = 1,000 m`, `g = 9,81 m/s²` e `N = 2`.
 
+> **Portão da Fase 5:** esta fase valida somente T073–T086: seletor, controles,
+> console, fórmula viva, comparação e métricas dos Cenários 1, 2 e 4 que pertencem
+> a esse intervalo. A tabela de coleta completa é entrega da Fase 6 e os gráficos
+> completos (inclusive `T(α)`) são entrega da Fase 7; portanto, os passos do
+> roteiro que dependem desses componentes não bloqueiam o encerramento da Fase 5.
+
 ---
 
 ## 3. Roteiro de Validação

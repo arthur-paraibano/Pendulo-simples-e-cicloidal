@@ -132,6 +132,12 @@ necessária para este plano.
   custom é regressão de acessibilidade garantida.
 - **Consequências**: a estilização fica limitada ao que os controles nativos permitem — aceitável.
   Widget custom fica restrito à alça arrastável dentro da cena, onde não há equivalente nativo.
+  Na implementação de T075–T077, o campo digitável usa `type="text"` com
+  `inputmode="decimal"`, mantendo o slider como `type="range"` nativo. Essa é uma
+  exceção deliberada à literalidade do AD-05: RF-050 exige expressões (`2*pi`) e
+  unidades (`150 cm`), entradas que `type="number"` rejeita antes de o parser do
+  domínio recebê-las. Rótulo, descrição, teclado, validação anunciada e semântica
+  de edição continuam nativos; o avaliador é fechado e não executa JavaScript.
 
 ### AD-06 — Estado próprio com serialização no hash
 

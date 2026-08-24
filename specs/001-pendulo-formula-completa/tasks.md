@@ -229,7 +229,29 @@ com três gráficos ativos, depende de T097 e do gate de desempenho T121.
 
 ---
 
-## Fase 5 — Fórmula e Parâmetros (T073–T086)
+## Fase 5 — Fórmula e Parâmetros (T073–T086) ✅ CONCLUÍDA
+
+> **Status de verificação (2026-08-24):** T073–T086 concluídas. A entrega inclui
+> seletor Simples/Cicloidal/Ambos sem recriar o runtime, controles gerados pelo
+> esquema com precisão interna e passo fino, console com aliases, expressões,
+> unidades e aplicação atômica documentada, painel completo de derivados e a
+> fórmula viva em KaTeX 0.18.4 com saída `htmlAndMathml`, comparação empilhada,
+> destaque acessível e métricas observáveis em até 100 ms.
+>
+> A certificação independente aprovou lint, tipos, **653/653 testes** e cobertura
+> por arquivo de **99,10% statements, 94,76% branches, 99,47% funções e 99,56%
+> linhas**. Os **10/10 cenários Chromium** da Fase 5 passaram. O build Pages mede
+> **370,3 kB comprimidos** (limite 400 kB) e o HTML único offline **734,9 KiB**
+> (limite 1.536 KiB), ambos sem requisições externas.
+>
+> **Atualização (revalidação de 2026-08-24):** o Firefox voltou a executar
+> localmente e passou **24/24** cenários; a suíte de ponta a ponta mede **48/48**
+> somando Chromium e Firefox. A falha de `browserContext.newPage` registrada antes
+> não se reproduz mais, e o gate nos dois navegadores está verificado localmente.
+>
+> O portão desta fase cobre somente os passos dos Cenários 1, 2 e 4 atribuíveis a
+> T073–T086. A tabela de coleta completa e o gráfico `T(α)` permanecem, de forma
+> deliberada, nas Fases 6 e 7.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
