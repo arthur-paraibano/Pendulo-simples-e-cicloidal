@@ -31,6 +31,7 @@ export default tseslint.config(
       'playwright-report/**',
       'test-results/**',
       'coverage/**',
+      'vendor/**',
       'pendulo-simulador.html',
     ],
   },
