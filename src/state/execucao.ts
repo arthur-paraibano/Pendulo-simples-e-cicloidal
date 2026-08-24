@@ -98,6 +98,11 @@ export class ControleExecucao {
     return this.estadoAtual === 'rodando'
   }
 
+  /** Sincroniza uma restauração externa (URL/preset) sem inventar transição. */
+  sincronizar(estado: EstadoExecucao): void {
+    this.estadoAtual = estado
+  }
+
   aplicar(comando: Comando, detalhe?: string): Transicao {
     const transicao = transicionar(this.estadoAtual, comando, detalhe)
     this.estadoAtual = transicao.para

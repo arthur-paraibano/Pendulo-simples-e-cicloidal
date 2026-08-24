@@ -136,12 +136,23 @@ describe('Store: limites dinâmicos', () => {
     expect(s.definirParametro('alpha', 120).valor).toBe(120)
   })
 
-  it('ajusta a amplitude ao entrar no modo cicloidal', () => {
+  it('não reescreve a condição do simples ao apenas mudar a visualização', () => {
     // RF-025: a mudança é comunicada, e o valor deixa de violar a geometria.
     const s = new Store()
     s.definirParametro('alpha', 150)
     s.definirParametro('modo', 'cicloidal')
-    expect(s.numero('alpha')).toBe(90)
+    expect(s.numero('alpha')).toBe(150)
+  })
+
+  it('preserva amplitude e angulo inicial preexistentes na comparação', () => {
+    const s = new Store()
+    s.definirParametro('alpha', 150)
+    s.definirParametro('theta0', -140)
+    s.definirParametro('modo', 'comparacao')
+    expect(s.numero('alpha')).toBe(150)
+    expect(s.numero('theta0')).toBe(-140)
+    expect(s.definirParametro('alpha', 120).valor).toBe(90)
+    expect(s.definirParametro('theta0', 120).valor).toBe(90)
   })
 
   it('limita o raio da esfera a L/4', () => {

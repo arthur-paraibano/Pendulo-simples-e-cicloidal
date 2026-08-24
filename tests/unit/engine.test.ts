@@ -84,6 +84,13 @@ describe('MotorPendulo: estado inicial', () => {
     expect(motor.theta).toBeCloseTo(g(30), 12)
   })
 
+  it('converte a velocidade angular inicial para a coordenada cicloidal', () => {
+    const motor = new MotorPendulo(ideal('cicloidal'), g(60), { omegaInicial: 2 })
+    expect(motor.atual.qPonto).toBeCloseTo(1, 12)
+    const simples = new MotorPendulo(ideal('simples'), g(60), { omegaInicial: 2 })
+    expect(simples.atual.qPonto).toBe(2)
+  })
+
   it('reconhece que o pêndulo ideal é conservativo', () => {
     expect(new MotorPendulo(ideal('simples'), g(10)).conservativo).toBe(true)
     const comAtrito: ParametrosDinamica = {

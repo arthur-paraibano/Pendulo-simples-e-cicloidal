@@ -18,6 +18,7 @@ import {
   anguloDaCoordenada,
   coordenadaDoAngulo,
   ehConservativo,
+  validarEstadoCicloidalInicial,
   type ParametrosDinamica,
 } from './ode.js'
 import { SensorZero, type EventoPassagem } from './sensor.js'
@@ -93,6 +94,10 @@ export interface OpcoesMotor {
   readonly metodo?: MetodoIntegracao
   readonly capacidadeBuffer?: number
   readonly intervaloMinimoSensor?: Segundo
+  /** Velocidade angular inicial do fio, em rad/s. */
+  readonly omegaInicial?: number
+  /** Reproduz deterministicamente a trajetória até este instante. */
+  readonly tempoInicial?: number
 }
 
 /**
@@ -120,13 +125,32 @@ export class MotorPendulo {
     this.buffer = new BufferCircular<Amostra>(opcoes.capacidadeBuffer ?? 3600)
     this.sensor = new SensorZero(opcoes.intervaloMinimoSensor ?? segundo(0))
 
+    validarEstadoCicloidalInicial(alphaInicial, opcoes.omegaInicial ?? 0, params)
+
     this.estado = {
       t: segundo(0),
       q: coordenadaDoAngulo(alphaInicial, params.modo),
-      qPonto: 0,
+      // No cicloidal q = sen(theta), portanto q' = cos(theta) theta'.
+      qPonto: params.modo === 'cicloidal'
+        ? Math.cos(alphaInicial) * (opcoes.omegaInicial ?? 0)
+        : (opcoes.omegaInicial ?? 0),
     }
     this.energiaInicial = this.energias().total
     this.registrarAmostra()
+    const tempoInicial = opcoes.tempoInicial ?? 0
+    if (!Number.isFinite(tempoInicial) || tempoInicial < 0) {
+      throw new ErroDeDominio('tempoInicial', tempoInicial, 'número finito ≥ 0')
+    }
+    if (tempoInicial > 0) {
+      const razao = tempoInicial / this.h
+      const inteiroMaisProximo = Math.round(razao)
+      // Evita perder um passo por ruído binário em valores como 2,5/0,001.
+      const passos = Math.abs(razao - inteiroMaisProximo) <= 1e-9
+        ? inteiroMaisProximo
+        : Math.floor(razao)
+      this.avancarPassos(passos)
+      this.acumulador = Math.max(0, tempoInicial - passos * this.h)
+    }
   }
 
   /** Estado corrente na coordenada generalizada. */
@@ -141,6 +165,11 @@ export class MotorPendulo {
 
   get tempo(): Segundo {
     return this.estado.t
+  }
+
+  /** Instante pedido ao motor, incluindo o resíduo menor que um passo fixo. */
+  get tempoSolicitado(): number {
+    return this.estado.t + this.acumulador
   }
 
   get amostras(): Amostra[] {
@@ -182,6 +211,9 @@ export class MotorPendulo {
     for (let i = 0; i < n; i++) {
       const anterior = this.estado
       this.estado = passo(anterior, this.h, this.params, this.metodo)
+      // Não esconda um estado fisicamente impossível com `asin(clamp(q))`.
+      // A conversão valida a fronteira e produz uma mensagem acionável.
+      anguloDaCoordenada(this.estado.q, this.params.modo)
       const evento = this.sensor.processar(anterior, this.estado)
       if (evento !== null) eventos.push(evento)
       this.registrarAmostra()

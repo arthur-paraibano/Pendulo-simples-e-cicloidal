@@ -208,13 +208,14 @@ const GEOMETRIA: readonly DefinicaoParametro[] = [
     precisao: 1,
     passoFino: 0.01,
     // No modo cicloidal a geometria limita a 90°: s = L·sen θ com |s| ≤ L.
-    limiteDinamico: (v) => (v.texto('modo') === 'cicloidal' ? { max: 90 } : null),
+    limiteDinamico: (v) => (v.texto('modo') !== 'simples' ? { max: 90 } : null),
   }),
   num('P03', 'theta0', 'θ₀', 'Ângulo inicial com sinal', 'Posição inicial, permitindo soltar de qualquer um dos lados.', '°', -179.9, 179.9, 10, 0.1, 'geometria', 'basico', {
     aliases: ['theta', 'teta'],
     indexavel: true,
     afeta: ['cena'],
     precisao: 1,
+    limiteDinamico: (v) => (v.texto('modo') !== 'simples' ? { min: -90, max: 90 } : null),
   }),
   num('P04', 'omega0', 'ω₀', 'Velocidade angular inicial', 'Impulso inicial: diferente de zero, a massa começa em movimento.', 'rad/s', -20, 20, 0, 0.01, 'geometria', 'avancado', {
     aliases: ['omega', 'velocidadeInicial'],

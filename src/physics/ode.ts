@@ -17,10 +17,23 @@
  */
 
 import type { ModoPendulo } from './types.js'
-import { exigirPositivo, type Kg, type Metro, type MPorS2, type Segundo } from './units.js'
+import { ErroDeDominio, exigirPositivo, type Kg, type Metro, type MPorS2, type Segundo } from './units.js'
 
 /** Como a dissipação é modelada. */
 export type ModeloAtrito = 'nenhum' | 'viscoso' | 'quadratico'
+
+/**
+ * Converte a opção da interface somente quando há parâmetros suficientes para
+ * o modelo. O atrito seco no pivô exige um torque de Coulomb, parâmetro ainda
+ * ausente do catálogo; rejeitá-lo explicitamente evita tratá-lo como viscoso.
+ */
+export function exigirModeloAtritoImplementado(valor: string): ModeloAtrito {
+  if (valor === 'nenhum' || valor === 'viscoso' || valor === 'quadratico') return valor
+  if (valor === 'pivo') {
+    throw new Error('Atrito no pivô requer um coeficiente de torque próprio e ainda não está disponível.')
+  }
+  throw new Error(`Modelo de atrito desconhecido: ${valor}.`)
+}
 
 export interface ParametrosDinamica {
   readonly L: Metro
@@ -112,11 +125,49 @@ export function ehConservativo(p: ParametrosDinamica): boolean {
  */
 export function anguloDaCoordenada(q: number, modo: ModoPendulo): number {
   if (modo !== 'cicloidal') return q
-  // Protege contra `q` escapar de [−1, 1] por erro de arredondamento.
+  const toleranciaNumerica = 1e-9
+  if (!Number.isFinite(q) || q < -1 - toleranciaNumerica || q > 1 + toleranciaNumerica) {
+    throw new ErroDeDominio(
+      'q',
+      q,
+      '−1 ≤ q ≤ 1 no modo cicloidal; reduza θ₀, ω₀ ou o forçamento externo',
+    )
+  }
+  // Somente o ruído de arredondamento da própria fronteira pode ser aparado.
   return Math.asin(Math.max(-1, Math.min(1, q)))
 }
 
 /** Converte o ângulo do fio na coordenada generalizada — o inverso do acima. */
 export function coordenadaDoAngulo(theta: number, modo: ModoPendulo): number {
-  return modo === 'cicloidal' ? Math.sin(theta) : theta
+  if (modo !== 'cicloidal') return theta
+  if (!Number.isFinite(theta) || Math.abs(theta) > Math.PI / 2 + 1e-12) {
+    throw new ErroDeDominio('theta', theta, '|θ| ≤ π/2 no modo cicloidal')
+  }
+  return Math.sin(theta)
+}
+
+/**
+ * Valida condições iniciais cicloidais. No caso conservativo a amplitude de
+ * q é conhecida exatamente; logo um impulso que exigiria |q| > 1 é recusado
+ * antes do primeiro passo. Com forçamento, a fronteira também é fiscalizada
+ * pelo motor durante cada passo.
+ */
+export function validarEstadoCicloidalInicial(
+  theta: number,
+  omegaInicial: number,
+  p: ParametrosDinamica,
+): void {
+  if (p.modo !== 'cicloidal') return
+  const q0 = coordenadaDoAngulo(theta, p.modo)
+  const qPonto0 = Math.cos(theta) * omegaInicial
+  if (ehConservativo(p)) {
+    const amplitudeQ = Math.hypot(q0, qPonto0 / Math.sqrt(omegaZeroQuadrado(p.L, p.g)))
+    if (amplitudeQ > 1 + 1e-12) {
+      throw new ErroDeDominio(
+        'omega0',
+        omegaInicial,
+        'energia inicial compatível com |q| ≤ 1 no modo cicloidal',
+      )
+    }
+  }
 }

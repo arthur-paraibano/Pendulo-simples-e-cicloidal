@@ -21,6 +21,7 @@ export interface AvisoUrl {
 
 export interface ResultadoLeitura {
   readonly valores: Record<string, ValorParametro>
+  readonly extras: Readonly<Record<string, string>>
   readonly avisos: readonly AvisoUrl[]
   readonly versaoLida: number
 }
@@ -72,16 +73,22 @@ export function serializar(store: Store, extras: Readonly<Record<string, string>
 export function desserializar(fragmento: string): ResultadoLeitura {
   const avisos: AvisoUrl[] = []
   const valores: Record<string, ValorParametro> = {}
+  const extras: Record<string, string> = {}
 
   const limpo = fragmento.replace(/^#/, '').trim()
-  if (limpo === '') return { valores, avisos, versaoLida: VERSAO_FORMATO }
+  if (limpo === '') return { valores, extras, avisos, versaoLida: VERSAO_FORMATO }
 
   let pares = limpo.split('&').filter((p) => p !== '')
   let versaoLida = VERSAO_FORMATO
 
   const compactado = pares.find((p) => p.startsWith('z='))
   if (compactado !== undefined) {
-    pares = descomprimir(compactado.slice(2)).split('&').filter((p) => p !== '')
+    try {
+      pares = descomprimir(compactado.slice(2)).split('&').filter((p) => p !== '')
+    } catch {
+      avisos.push({ chave: 'z', mensagem: 'Estado compactado inválido; carregando os padrões.' })
+      pares = []
+    }
   }
 
   for (const par of pares) {
@@ -90,8 +97,15 @@ export function desserializar(fragmento: string): ResultadoLeitura {
       avisos.push({ chave: par, mensagem: `Trecho sem valor ignorado: "${par}".` })
       continue
     }
-    const chave = decodeURIComponent(par.slice(0, separador))
-    const bruto = decodeURIComponent(par.slice(separador + 1))
+    let chave: string
+    let bruto: string
+    try {
+      chave = decodeURIComponent(par.slice(0, separador))
+      bruto = decodeURIComponent(par.slice(separador + 1))
+    } catch {
+      avisos.push({ chave: par, mensagem: `Codificação percentual inválida ignorada: "${par}".` })
+      continue
+    }
 
     if (chave === 'v') {
       const lida = Number(bruto)
@@ -105,6 +119,10 @@ export function desserializar(fragmento: string): ResultadoLeitura {
       continue
     }
     if (chave === 'z') continue
+    if (chave === 'vis' || chave === 't' || chave === 'run' || chave === 'roteiro') {
+      extras[chave] = bruto
+      continue
+    }
 
     const def = POR_ID.get(chave)
     if (def === undefined) {
@@ -137,12 +155,12 @@ export function desserializar(fragmento: string): ResultadoLeitura {
     }
   }
 
-  return { valores, avisos, versaoLida }
+  return { valores, extras, avisos, versaoLida }
 }
 
 /** Lê um fragmento e aplica ao store, devolvendo os avisos acumulados. */
 export function aplicarAoStore(store: Store, fragmento: string): readonly AvisoUrl[] {
-  const { valores, avisos } = desserializar(fragmento)
+  const { valores, extras, avisos } = desserializar(fragmento)
   const acumulados: AvisoUrl[] = [...avisos]
 
   store.emLote(() => {
@@ -153,6 +171,25 @@ export function aplicarAoStore(store: Store, fragmento: string): readonly AvisoU
       }
     }
   })
+  if (extras['t'] !== undefined) {
+    const tempo = Number(extras['t'])
+    const resultado = store.atualizarTempoSimulacao(tempo, true)
+    if (resultado.mensagem !== undefined) acumulados.push({ chave: 't', mensagem: resultado.mensagem })
+  }
+  if (extras['run'] === '1') store.definirParametro('execucao', 'rodando', 'url')
+  if (extras['vis'] !== undefined) {
+    const modo = extras['vis'] === 'ambos' ? 'comparacao' : extras['vis']
+    const resultado = store.definirParametro('modo', modo, 'url')
+    if (resultado.mensagem !== undefined) acumulados.push({ chave: 'vis', mensagem: resultado.mensagem })
+    // Restauração é uma nova experiência, não uma troca de vista em curso:
+    // reaplica explicitamente os limites geométricos e expõe cada limitação.
+    if (modo === 'cicloidal' || modo === 'comparacao') {
+      for (const id of ['alpha', 'theta0'] as const) {
+        const limitado = store.definirParametro(id, store.numero(id), 'url')
+        if (limitado.mensagem !== undefined) acumulados.push({ chave: id, mensagem: limitado.mensagem })
+      }
+    }
+  }
   return acumulados
 }
 

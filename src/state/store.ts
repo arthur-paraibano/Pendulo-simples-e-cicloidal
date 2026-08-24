@@ -173,6 +173,27 @@ export class Store {
     })
   }
 
+  /**
+   * Atualiza o relógio derivado da simulação sem transformar cada quadro em
+   * uma alteração de configuração. Por padrão não notifica assinantes: o
+   * relógio pode avançar a 60/120 Hz, enquanto UI e URL o amostram em cadência
+   * própria. Restauração de URL pode pedir uma notificação única.
+   */
+  atualizarTempoSimulacao(valor: number, notificar = false): ResultadoEscrita {
+    const def = POR_ID.get('t')!
+    const resultado = this.coagirEValidar(def, valor)
+    if (!resultado.aplicado) return resultado
+    if (!iguais(this.valores['t'], resultado.valor)) {
+      this.valores['t'] = resultado.valor
+      this.origens['t'] = resultado.limitadoDe === undefined ? 'usuario' : 'limitado'
+      if (notificar) {
+        this.marcar('t')
+        this.talvezNotificar()
+      }
+    }
+    return resultado
+  }
+
   /** Agrupa várias escritas em uma única notificação. */
   emLote<T>(acao: () => T): T {
     this.agrupando += 1
@@ -302,10 +323,9 @@ export class Store {
       this.escreverDireto('corpoCeleste', corpo)
     }
 
-    // Trocar de modo pode violar o limite geométrico da amplitude (RF-025).
-    if (idAlterado === 'modo' && this.texto('modo') === 'cicloidal') {
-      if (this.numero('alpha') > 90) this.escreverDireto('alpha', 90)
-    }
+    // Trocar apenas a visualização nunca reescreve silenciosamente as
+    // condições iniciais do pêndulo simples. A camada de runtime valida o
+    // domínio cicloidal e mantém o modo sobrevivente em movimento.
 
     // h e α são mutuamente determinados: h = L·sen²θ/2 (RF-158).
     if (idAlterado === 'alpha' || idAlterado === 'L') {

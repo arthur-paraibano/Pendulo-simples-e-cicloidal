@@ -117,6 +117,28 @@ describe('desserializar', () => {
   it('sem chave de versão, assume a corrente', () => {
     expect(desserializar('#alpha=10').versaoLida).toBe(VERSAO_FORMATO)
   })
+
+  it('percent-encoding truncado e compactação inválida viram avisos', () => {
+    expect(() => desserializar('#v=1&alpha=%E0%A4%A')).not.toThrow()
+    expect(desserializar('#v=1&alpha=%E0%A4%A').avisos).not.toHaveLength(0)
+    expect(() => desserializar('#v=1&z=%%%')).not.toThrow()
+  })
+
+  it('restaura extras de relógio, execução e visualização pelo contrato', () => {
+    const s = new Store()
+    aplicarAoStore(s, '#v=1&t=12.5&run=1&vis=ambos')
+    expect(s.numero('t')).toBe(12.5)
+    expect(s.texto('execucao')).toBe('rodando')
+    expect(s.texto('modo')).toBe('comparacao')
+  })
+
+  it('aplica o limite cicloidal ao extra vis sem limitação silenciosa', () => {
+    const s = new Store()
+    const avisos = aplicarAoStore(s, '#v=1&alpha=120&theta0=-120&vis=cicloidal')
+    expect(s.numero('alpha')).toBe(90)
+    expect(s.numero('theta0')).toBe(-90)
+    expect(avisos.filter((a) => a.mensagem.includes('90'))).toHaveLength(2)
+  })
 })
 
 describe('aplicarAoStore', () => {

@@ -6,6 +6,7 @@ import {
   coordenadaDoAngulo,
   dinamicaIdeal,
   ehConservativo,
+  exigirModeloAtritoImplementado,
   omegaZeroQuadrado,
   type ParametrosDinamica,
 } from '../../src/physics/ode.js'
@@ -25,6 +26,13 @@ const L1 = metro(1)
 const m1 = kg(1)
 const idealSimples = dinamicaIdeal(L1, G_TERRA, m1, 'simples')
 const idealCicloidal = dinamicaIdeal(L1, G_TERRA, m1, 'cicloidal')
+
+describe('selecao do modelo de atrito', () => {
+  it('rejeita atrito no pivo em vez de converte-lo silenciosamente', () => {
+    expect(() => exigirModeloAtritoImplementado('pivo')).toThrow(/coeficiente de torque/)
+    expect(exigirModeloAtritoImplementado('quadratico')).toBe('quadratico')
+  })
+})
 
 const inicial = (alpha: Rad, p: ParametrosDinamica): EstadoQ => ({
   t: segundo(0),
@@ -116,6 +124,11 @@ describe('conversão coordenada ↔ ângulo', () => {
   it('é identidade no modo simples', () => {
     expect(coordenadaDoAngulo(0.7, 'simples')).toBe(0.7)
     expect(anguloDaCoordenada(0.7, 'simples')).toBe(0.7)
+  })
+
+  it('rejeita q não finito ou materialmente fora do domínio cicloidal', () => {
+    expect(() => anguloDaCoordenada(Number.NaN, 'cicloidal')).toThrow(/q/)
+    expect(() => anguloDaCoordenada(1.01, 'cicloidal')).toThrow(/q/)
   })
 
   it('no cicloidal usa q = sen θ', () => {
