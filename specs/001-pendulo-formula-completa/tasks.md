@@ -104,20 +104,20 @@ critério de conclusão é verificável por comando.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
-| T031 | [P] Testes dos integradores e da conservação de energia | `tests/unit/integrators.test.ts` | RNF-013 | Falham; deriva < 0,1 % em 1000 períodos | T029 |
+| T031 | [P] Testes dos integradores e da conservação de energia | `tests/unit/integrators.test.ts` | RNF-007, RNF-008 | Falham; deriva < 0,1 % em 1000 períodos | T029 |
 | T032 | [P] Testes do sensor: interpolação, anti-repique, meio e pleno período | `tests/unit/sensor.test.ts` | RF-136, RF-137 | Falham; erro do instante < 1×10⁻⁴ s | T011 |
 | T033 | [P] Testes da inferência de `g`, incluindo a inversão | `tests/unit/inference.test.ts` | RF-142 a RF-144 | Falham; conferem a Tabela D | T011 |
-| T034 | Implementar a equação do movimento com atrito e forçamento | `src/physics/ode.ts` | RF-052 a RF-060 | Sinal restaurador para `\|θ\| < π` | T007 |
-| T035 | Implementar velocity-Verlet e RK4 | `src/physics/integrators.ts` | RF-113 | T031 passa | T031, T034 |
-| T036 | Implementar o motor de passo fixo com acumulador e teto anti-espiral | `src/physics/engine.ts` | RNF-013 | Avanço só por múltiplos de `h` | T035 |
+| T034 | Implementar a equação do movimento com atrito e forçamento | `src/physics/ode.ts` | US14; P27–P37 | Sinal restaurador para `\|θ\| < π` | T007 |
+| T035 | Implementar velocity-Verlet e RK4 | `src/physics/integrators.ts` | RNF-007, RNF-008 | T031 passa | T031, T034 |
+| T036 | Implementar o motor de passo fixo com acumulador e teto anti-espiral | `src/physics/engine.ts` | RNF-008 | Avanço só por múltiplos de `h` | T035 |
 | T037 | Implementar *ring buffers* de trajetória com memória constante | `src/physics/engine.ts` | RNF-020 | 3600 amostras; descarte do mais antigo | T036 |
-| T038 | Implementar a dinâmica cicloidal `s̈ = −(g/L)·s` | `src/physics/engine.ts` | RF-023, RF-026 | Período medido igual a `T₀` em qualquer amplitude | T036, T027 |
+| T038 | Implementar a dinâmica cicloidal `s̈ = −(g/L)·s` | `src/physics/engine.ts` | RF-023, RNF-006 | Período medido igual a `T₀` em qualquer amplitude | T036, T027 |
 | T039 | Implementar a detecção de cruzamento com interpolação linear | `src/physics/sensor.ts` | RF-136 | T032 passa | T032, T036 |
 | T040 | Implementar o cálculo de período por eventos, meio e completo | `src/physics/sensor.ts` | RF-137 | Ambas as convenções corretas | T039 |
 | T041 | Implementar a fixação do sensor no ponto zero, sem arrasto | `src/physics/sensor.ts` | RF-134, RF-135 | Posição constante; cúspide no modo cicloidal | T039, T026 |
 | T042 | Implementar inferência de `g` correta e ingênua | `src/physics/inference.ts` | RF-142 a RF-144 | T033 passa; inversão exata em 1×10⁻¹⁰ | T033, T022 |
-| T043 | Implementar detecção de amplitude corrente sob atrito | `src/physics/analysis.ts` | RF-058 | Decaimento acompanhado corretamente | T037 |
-| T044 | Teste de integração: período do sensor contra o analítico | `tests/unit/sensor-integracao.test.ts` | RF-137 | `α=10°` ⇒ `2,009893 s` ± 0,2 ms; Δ(10°→20°) ± 0,1 ms | T040, T022 |
+| T043 | Implementar detecção de amplitude corrente sob atrito | `src/physics/analysis.ts` | US14 | Decaimento acompanhado corretamente | T037 |
+| T044 | Teste de integração: período do sensor contra o analítico | `tests/unit/engine.test.ts` | RF-137, RNF-009 | `α=10°` ⇒ `2,009893 s` ± 0,2 ms; Δ(10°→20°) ± 0,1 ms | T040, T022 |
 
 **Portão de saída**: período medido concorda com o analítico em 1×10⁻⁴; deriva de energia < 0,1 %.
 
@@ -150,43 +150,82 @@ critério de conclusão é verificável por comando.
 |---|---|---|---|---|---|
 | T045 | [P] Testes do esquema: `min ≤ padrao ≤ max`, unicidade, colisão de aliases | `tests/unit/schema.test.ts` | RF-034, RF-035 | Falham; varrem os 112 parâmetros | T007 |
 | T046 | [P] Testes de ida e volta do endereço compartilhável | `tests/unit/url.test.ts` | RF-106, RF-107 | Falham; 12 casos do contrato | T045 |
-| T047 | [P] Testes do interpretador do console | `tests/unit/console.test.ts` | RF-045 a RF-047 | Falham; incluem `α = 10` e a atomicidade | T045 |
+| T047 | [P] Testes do interpretador do console | `tests/unit/console.test.ts` | RF-055 a RF-058 | Falham; incluem `α = 10` e a atomicidade | T045 |
 | T048 | Transcrever os 112 parâmetros `P01–P112` para o esquema | `src/state/schema.ts` | RF-034 a RF-044 | T045 passa; todo código da spec tem entrada | T045 |
 | T049 | Implementar o store com assinatura por chave e agrupamento por quadro | `src/state/store.ts` | RNF-003 | N alterações no quadro ⇒ uma notificação | T048 |
-| T050 | Implementar validação, limitação e mensagem de limite | `src/state/store.ts` | RF-048, RNF-023 | Mensagem nomeia parâmetro, valor e limite | T049 |
-| T051 | Implementar limites dinâmicos e restrições cruzadas | `src/state/store.ts` | RF-025, RF-049 | `R_b ≤ L/4`; `α ≤ 90°` no cicloidal | T050 |
+| T050 | Implementar validação, limitação e mensagem de limite | `src/state/store.ts` | RF-051 a RF-054, RNF-023 | Mensagem nomeia parâmetro, valor e limite | T049 |
+| T051 | Implementar limites dinâmicos e restrições cruzadas | `src/state/store.ts` | RF-025, RF-160 | `R_b ≤ L/4`; `α ≤ 90°` no cicloidal/comparação | T050 |
 | T052 | Implementar o grafo de derivações em ordem topológica | `src/state/store.ts` | RF-037 | Sem ciclos; lado mestre explícito | T051, T024 |
 | T053 | Implementar serialização e desserialização do endereço | `src/state/url.ts` | RF-106 a RF-108 | T046 passa | T046, T048 |
-| T054 | Implementar presets de fábrica e do usuário | `src/state/presets.ts`, `src/data/presets.json` | RF-097 a RF-099 | Validados contra `preset.schema.json` | T048 |
-| T055 | Implementar histórico com desfazer e refazer agrupados | `src/state/history.ts` | RF-050 | Arrastar slider é um passo de desfazer | T049 |
-| T056 | Implementar a coleção de medições e as estatísticas | `src/state/measurements.ts` | RF-102, RF-147 | Desvio padrão amostral; `null` com `n < 2` | T042 |
+| T054 | Implementar o núcleo de presets de fábrica e do usuário | `src/state/presets.ts` | RF-097 a RF-099 | Validação e ida-e-volta cobertas por testes; UI fica em T107–T109 | T048 |
+| T055 | Implementar histórico com desfazer e refazer agrupados | `src/state/history.ts` | RF-061, RF-062 | Arrastar slider é um passo de desfazer | T049 |
+| T056 | Implementar a coleção de medições e as estatísticas | `src/state/measurements.ts` | RF-094, RF-147 | Desvio padrão amostral; `null` com `n < 2` | T042 |
 | T057 | Implementar persistência local de presets e preferências | `src/state/persist.ts` | RF-098 | Sobrevive a recarregar a página | T054 |
-| T058 | Implementar a máquina de estados da execução | `src/state/store.ts` | RF-091 a RF-095 | Parâmetro estrutural pausa e informa o motivo | T049 |
+| T058 | Implementar a máquina de estados da execução | `src/state/execucao.ts` | RF-063 | Parâmetro estrutural pausa e informa o motivo | T049 |
 
 **Portão de saída**: ida e volta pela URL preserva todos os 112 parâmetros; undo/redo estável.
 
 ---
 
-## Fase 4 — Cena (T059–T072)
+## Fase 4 — Cena (T059–T072) ✅ CONCLUÍDA
+
+> Executada em 2026-08-19. A cena usa três bitmaps Canvas coordenados por
+> `ResizeObserver`, cada um ajustado ao `devicePixelRatio` com teto explícito
+> de 2× e detecção de mudança: geometria estática,
+> rastro incremental e conteúdo dinâmico. A transformação metro ↔ pixel é
+> reversível e a visualização comparativa compartilha origem vertical e escala.
+>
+> A verificação corretiva elevou o projeto a **603 testes unitários em 24 arquivos**, incluindo
+> `src/render/**` e os módulos extraídos de `src/app/**` no gate **por arquivo**. O conjunto alcança
+> 99,02% de statements, 94,66% de branches, 99,44% de funções e 99,47% de linhas.
+> Há 14 cenários E2E, totalizando **28 execuções** em Chromium e Firefox: DPR, controles,
+> comparação e limites, URL adversária, bfcache, pixels reais, tema/teclado,
+> rejeição de modelo incompleto e orçamento de quadro. O smoke visual cobriu a
+> comparação com cicloide, instrumentos, régua reposicionável, estroboscópio,
+> rastro de período e fantasma `T₀`, sem erro de console.
+>
+> O invariante do fio (`L = trecho enrolado + trecho livre`, com `r = L/4`) é
+> verificado em quatro amplitudes, inclusive 89°. Lint, tipos, cobertura,
+> builds e tamanho passam; os artefatos medem **26,8 KB gzip** no alvo Pages e
+> **82,5 KB** no HTML offline. As 28 execuções E2E (14 em cada navegador) passam.
+> A CI instala explicitamente Chromium e Firefox antes de
+> executar o Playwright.
+>
+> O ensaio executado nesta fase é um gate curto de regressão, não a comprovação
+> integral do RNF-001/P95 por 60 segundos. Essa comprovação continua corretamente
+> escopada em T121, após os gráficos da Fase 7. O histórico disponível contém
+> apenas o commit inicial e não registra a sequência teste-falhando → implementação;
+> portanto G2 não pode ser comprovado retroativamente, embora os testes atuais
+> sejam executáveis e todos os gates passem.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
 | T059 | Implementar as três camadas de canvas com DPI e redimensionamento | `src/render/layers.ts` | RNF-001 | Nítido em telas de alta densidade | T009 |
-| T060 | [P] Implementar a transformação mundo ↔ tela com zoom | `src/render/transform.ts` | RF-053 | Régua e cena concordam na escala | T059 |
-| T061 | [P] Implementar a paleta a partir dos tokens, com invalidação no tema | `src/render/palette.ts` | RF-069 | Trocar tema redesenha a camada estática | T009 |
-| T062 | Desenhar a cena do pêndulo simples: pivô, fio, massa | `src/render/scene.ts` | RF-063 | 60 fps com um pêndulo | T060, T036 |
+| T060 | [P] Implementar a transformação mundo ↔ tela com zoom | `src/render/transform.ts` | RF-077, RF-089 | Régua e cena concordam na escala | T059 |
+| T061 | [P] Implementar a paleta a partir dos tokens, com invalidação no tema | `src/render/palette.ts` | RF-121, RNF-015 | Trocar tema redesenha a camada estática | T009 |
+| T062 | Desenhar a cena do pêndulo simples: pivô, fio, massa | `src/render/scene.ts` | RF-063, RF-070 | Gate curto sustenta a animação; P95/60 s fica em T121 | T060, T036 |
 | T063 | Desenhar as faces cicloidais, trecho enrolado, livre e ponto de contato | `src/render/cycloid-face.ts` | RF-026, RF-027 | Geometria coerente com `L = 4r` | T060, T027 |
-| T064 | Desenhar a trajetória da massa e a evoluta | `src/render/cycloid-face.ts` | RF-019, RF-020 | Involuta e evoluta distinguíveis | T063 |
+| T064 | Desenhar a trajetória da massa e a evoluta | `src/render/cycloid-face.ts` | RF-026 | Involuta e evoluta distinguíveis | T063 |
 | T065 | Implementar o rastro incremental com duração ajustável | `src/render/trace.ts` | RF-071 | Camada nunca limpa por inteiro | T059 |
 | T066 | Desenhar o marcador do sensor no ponto zero, com realce de disparo | `src/render/sensor-marker.ts` | RF-134, RF-138 | Visível, não arrastável, pisca a cada passagem | T041, T062 |
-| T067 | Desenhar vetores de velocidade, aceleração e forças, com escala | `src/render/instruments.ts` | RF-061 a RF-065 | Decomposição tangencial e centrípeta correta | T062 |
+| T067 | Desenhar vetores de velocidade, aceleração e forças, com escala | `src/render/instruments.ts` | RF-072, RF-073 | Decomposição tangencial e centrípeta correta | T062 |
 | T068 | Desenhar transferidor, régua, linha vertical e arco de amplitude | `src/render/instruments.ts` | RF-088, RF-089 | Leituras coerentes com o estado | T060 |
-| T069 | [P] Implementar o estroboscópio | `src/render/scene.ts` | RF-066 a RF-068 | Intervalo e número de imagens configuráveis | T065 |
-| T070 | Implementar a cena dupla da visualização "Ambos" com eixo e escala comuns | `src/render/scene.ts` | RF-128, RF-129 | Duas cenas alinhadas verticalmente | T062, T063 |
-| T071 | Implementar o pêndulo fantasma de referência com `T₀` | `src/render/scene.ts` | RF-074 | Defasagem visível em relação ao real | T062 |
-| T072 | Implementar o laço de animação com orçamento de quadro e diagnóstico | `src/main.ts` | RNF-001, RNF-002 | Painel mostra fps e tempo por camada | T059–T071 |
+| T069 | [P] Implementar o estroboscópio | `src/render/scene.ts` | RF-074 | Intervalo e número de imagens configuráveis | T065 |
+| T070 | Implementar a cena dupla da visualização "Ambos" com eixo e escala comuns | `src/render/scene.ts` | RF-128, RF-130 | Duas cenas alinhadas verticalmente sem reiniciar ao alternar | T062, T063 |
+| T071 | Implementar o pêndulo fantasma de referência com `T₀` | `src/render/scene.ts` | RF-075 | Defasagem visível em relação ao real | T062 |
+| T072 | Implementar o laço de animação com orçamento de quadro e diagnóstico | `src/main.ts`, `src/app/runtime.ts` | RNF-001 | Painel a 1 Hz mostra fps e tempo por camada; gate integral em T121 | T059–T071 |
 
-**Portão de saída**: 60 fps com rastro ligado; invariante geométrico do fio verificado em cena.
+**Portão de saída da fase**: smoke curto ≥55 fps com rastro ligado; invariante
+geométrico do fio verificado em cena. O portão integral RNF-001 permanece T121.
+
+**Dependências deliberadamente futuras**: a sonificação opcional do disparo em
+RF-138 pertence a P109/T119 (Fase 9); T066 entrega nesta fase o realce visual.
+O desacoplamento individual de `L`, `g` e `alpha` em RF-129 depende do modelo
+indexado T125–T128 (Fase 5b); T070 entrega a comparação acoplada por padrão e a
+preservação de dinâmica exigida por RF-130.
+O cenário E2E desta fase verifica a cena comparativa com rastro acima de 55 fps
+e abaixo de 16,7 ms por quadro; o ensaio integral de RNF-001 por 60 segundos,
+com três gráficos ativos, depende de T097 e do gate de desempenho T121.
 
 ---
 
@@ -354,10 +393,9 @@ Todos os 160 requisitos funcionais e 23 não funcionais têm cobertura. **Nenhum
 | RF-026 a RF-029 | Geometria cicloidal | T017, T026, T027, T038, T063 |
 | RF-030 a RF-033 | Comparação e contexto histórico | T070, T085, T122 |
 | RF-034 a RF-044 | Catálogo de parâmetros | T045, T048, T075, T078 |
-| RF-045 a RF-051 | Entrada, validação e console | T047, T050, T051, T055, T076, T077, T080 |
-| RF-052 a RF-062 | Dinâmica, atrito e forçamento | T034, T035, T043, T067 |
-| RF-063 a RF-074 | Cena e apresentação | T062–T071, T083 |
-| RF-075 a RF-087 | Gráficos | T097–T103 |
+| RF-045 a RF-062 | Entrada, validação, console, manipulação e histórico | T047, T050, T051, T055, T075–T080 |
+| RF-063 a RF-077 | Execução, cena, vetores e apresentação | T034–T036, T058–T072, T083 |
+| RF-078 a RF-087 | Gráficos | T037, T043, T097–T103 |
 | RF-088 a RF-096 | Instrumentos de medição | T068, T104, T105, T106 |
 | RF-097 a RF-105 | Presets, roteiros e caderno | T093, T107–T111 |
 | RF-106 a RF-114 | Estado, URL e exportação | T046, T053, T112, T113 |
@@ -367,6 +405,6 @@ Todos os 160 requisitos funcionais e 23 não funcionais têm cobertura. **Nenhum
 | **RF-140 a RF-150** | **Tabela de coleta de `T` e `g`** | **T033, T042, T087–T096, T112, T114** |
 | **RF-151 a RF-160** | **Parâmetros indexados e altura de largada** | **T125–T130** |
 | RNF-001 a RNF-005 | Desempenho | T059, T072, T097, T120, T121 |
-| RNF-006 a RNF-010 | Precisão e compatibilidade | T011, T018, T021, T044 |
-| RNF-011 a RNF-015 | Entrega e determinismo | T005, T010, T036, T053, T124 |
-| RNF-016 a RNF-023 | Acessibilidade, memória e mensagens | T037, T050, T117–T119 |
+| RNF-006 a RNF-010 | Precisão, energia e determinismo numérico | T018, T021, T031, T035, T036, T038, T044 |
+| RNF-011 a RNF-015 | Entrega, navegadores, layout e contraste | T005, T010, T059, T061, T121, T124 |
+| RNF-016 a RNF-023 | Acessibilidade, memória, fontes e mensagens | T037, T050, T061, T068, T117–T119, T122 |
