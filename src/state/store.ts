@@ -34,13 +34,22 @@ export class ErroDeParametro extends Error {
   }
 }
 
-type Ouvinte = (chavesAlteradas: ReadonlySet<string>) => void
+export interface ContextoAlteracao {
+  /** Campos escritos por uma ação pública (usuário, console, preset ou URL). */
+  readonly explicitas: ReadonlySet<string>
+  /** Campos propagados pelo grafo de derivações do Store. */
+  readonly derivadas: ReadonlySet<string>
+}
+
+type Ouvinte = (chavesAlteradas: ReadonlySet<string>, contexto: ContextoAlteracao) => void
 
 export class Store {
   private valores: Record<string, ValorParametro>
   private origens: Record<string, OrigemValor> = {}
   private readonly ouvintes = new Map<Ouvinte, ReadonlySet<string> | null>()
   private pendentes = new Set<string>()
+  private explicitasPendentes = new Set<string>()
+  private derivadasPendentes = new Set<string>()
   private notificando = false
   private agrupando = 0
 
@@ -131,7 +140,7 @@ export class Store {
     if (!iguais(this.valores[id], resultado.valor)) {
       this.valores[id] = resultado.valor
       this.origens[id] = resultado.limitadoDe !== undefined ? 'limitado' : origem
-      this.marcar(id)
+      this.marcar(id, 'explicita')
       this.aplicarDerivacoes(id)
       this.talvezNotificar()
     }
@@ -187,7 +196,7 @@ export class Store {
       this.valores['t'] = resultado.valor
       this.origens['t'] = resultado.limitadoDe === undefined ? 'usuario' : 'limitado'
       if (notificar) {
-        this.marcar('t')
+        this.marcar('t', 'explicita')
         this.talvezNotificar()
       }
     }
@@ -234,8 +243,9 @@ export class Store {
         mensagem = `${def.simbolo} = ${numeroBruto} está acima do máximo; ajustado para ${max}${sufixo(def)}.`
       }
 
+      // `precisao` é exclusivamente de apresentação (RF-039). O estado
+      // preserva passos finos menores que o número de casas exibido.
       if (def.tipo === 'inteiro') limitado = Math.round(limitado)
-      else if (def.precisao !== undefined) limitado = arredondar(limitado, def.precisao)
 
       return {
         id: def.id,
@@ -323,9 +333,16 @@ export class Store {
       this.escreverDireto('corpoCeleste', corpo)
     }
 
-    // Trocar apenas a visualização nunca reescreve silenciosamente as
-    // condições iniciais do pêndulo simples. A camada de runtime valida o
-    // domínio cicloidal e mantém o modo sobrevivente em movimento.
+    // Ao entrar no domínio cicloidal, condições geometricamente impossíveis
+    // são limitadas no mesmo lote. A UI compara antes/depois para comunicar
+    // exatamente quais campos mudaram (RF-025/RF-031).
+    if (idAlterado === 'modo' && this.texto('modo') !== 'simples') {
+      this.escreverDireto('alpha', this.numero('alpha'))
+      this.escreverDireto('theta0', this.numero('theta0'))
+      const L = this.numero('L')
+      const alpha = (this.numero('alpha') * Math.PI) / 180
+      this.escreverDireto('h0', (L * Math.sin(alpha) ** 2) / 2)
+    }
 
     // h e α são mutuamente determinados: h = L·sen²θ/2 (RF-158).
     if (idAlterado === 'alpha' || idAlterado === 'L') {
@@ -352,7 +369,7 @@ export class Store {
     }
     if (!iguais(this.valores[id], ajustado)) {
       this.valores[id] = ajustado
-      this.marcar(id)
+      this.marcar(id, 'derivada')
     }
   }
 
@@ -370,8 +387,10 @@ export class Store {
     }
   }
 
-  private marcar(id: string): void {
+  private marcar(id: string, origem: 'explicita' | 'derivada'): void {
     this.pendentes.add(id)
+    if (origem === 'explicita') this.explicitasPendentes.add(id)
+    else this.derivadasPendentes.add(id)
   }
 
   private talvezNotificar(): void {
@@ -382,12 +401,18 @@ export class Store {
       )
     }
     const alteradas = this.pendentes
+    const contexto: ContextoAlteracao = {
+      explicitas: this.explicitasPendentes,
+      derivadas: this.derivadasPendentes,
+    }
     this.pendentes = new Set()
+    this.explicitasPendentes = new Set()
+    this.derivadasPendentes = new Set()
     this.notificando = true
     try {
       for (const [ouvinte, filtro] of this.ouvintes) {
         if (filtro === null || [...alteradas].some((k) => filtro.has(k))) {
-          ouvinte(alteradas)
+          ouvinte(alteradas, contexto)
         }
       }
     } finally {

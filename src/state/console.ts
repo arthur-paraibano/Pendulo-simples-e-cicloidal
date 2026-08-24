@@ -17,13 +17,16 @@
  */
 
 import { encontrarParametro, normalizarChave, POR_ID } from './schema.js'
-import type { Store } from './store.js'
+import { interpretarEntradaNumerica } from './numeric-input.js'
+import { Store } from './store.js'
 
 const SUBSCRITOS = '₀₁₂₃₄₅₆₇₈₉'
 
 export interface Atribuicao {
   readonly termo: string
   readonly id: string
+  readonly linha: number
+  readonly posicao: number
   /** Índice do pêndulo, quando informado (`L₁` ⇒ 1). */
   readonly indice?: number
   readonly valor: number | boolean | string
@@ -65,13 +68,29 @@ function separarIndice(termo: string): { base: string; indice?: number } {
   return { base: normalizado }
 }
 
-/** Interpreta um número aceitando vírgula ou ponto como separador decimal. */
-function interpretarNumero(texto: string): number | null {
-  const limpo = texto.trim().replace(',', '.')
-  if (limpo === '') return null
-  const n = Number(limpo)
-  return Number.isFinite(n) ? n : null
+interface ComandoLocalizado {
+  readonly texto: string
+  readonly linha: number
+  readonly posicao: number
 }
+
+function localizarComandos(bloco: string): ComandoLocalizado[] {
+  const comandos: ComandoLocalizado[] = []
+  for (const [indiceLinha, original] of bloco.split(/\r?\n/).entries()) {
+    const marcadores = [original.indexOf('#'), original.indexOf('//')].filter((indice) => indice >= 0)
+    const semComentario = original.slice(0, marcadores.length === 0 ? undefined : Math.min(...marcadores))
+    let inicio = 0
+    for (const trecho of semComentario.split(';')) {
+      const primeiro = trecho.search(/\S/)
+      if (primeiro >= 0) comandos.push({ texto: trecho.trim(), linha: indiceLinha + 1, posicao: inicio + primeiro + 1 })
+      inicio += trecho.length + 1
+    }
+  }
+  return comandos
+}
+
+const erroLocalizado = (comando: ComandoLocalizado, motivo: string): string =>
+  `Linha ${comando.linha}, posição ${comando.posicao}: ${motivo}`
 
 /**
  * Interpreta uma linha sem aplicá-la — útil para validar antes de escrever.
@@ -80,16 +99,14 @@ export function interpretar(linha: string): ResultadoConsole {
   const erros: string[] = []
   const atribuicoes: Atribuicao[] = []
 
-  const comandos = linha
-    .split(';')
-    .map((c) => c.trim())
-    .filter((c) => c !== '')
+  const comandos = localizarComandos(linha)
 
   if (comandos.length === 0) {
     return { sucesso: false, atribuicoes: [], erros: ['Nada a interpretar.'], mensagens: [] }
   }
 
-  for (const comando of comandos) {
+  for (const localizado of comandos) {
+    const comando = localizado.texto
     // Separa por '=' ou ':' quando houver; senão, pelo primeiro espaço.
     let termoBruto: string
     let valorBruto: string
@@ -100,7 +117,7 @@ export function interpretar(linha: string): ResultadoConsole {
     } else {
       const espaco = comando.search(/\s/)
       if (espaco < 0) {
-        erros.push(`"${comando}" não é uma atribuição. Use, por exemplo, α = 10.`)
+        erros.push(erroLocalizado(localizado, `"${comando}" não é uma atribuição. Use, por exemplo, α = 10.`))
         continue
       }
       termoBruto = comando.slice(0, espaco)
@@ -110,41 +127,39 @@ export function interpretar(linha: string): ResultadoConsole {
     const { base, indice } = separarIndice(termoBruto.trim())
     const def = encontrarParametro(base)
     if (def === undefined) {
-      erros.push(`Parâmetro desconhecido: "${termoBruto.trim()}".`)
+      erros.push(erroLocalizado(localizado, `Parâmetro desconhecido: "${termoBruto.trim()}".`))
       continue
     }
     if (indice !== undefined && !def.indexavel) {
-      erros.push(
-        `${def.simbolo} (${def.nome}) não existe por pêndulo, então não aceita índice.`,
-      )
+      erros.push(erroLocalizado(localizado, `${def.simbolo} (${def.nome}) não existe por pêndulo, então não aceita índice.`))
       continue
     }
 
     const textoValor = valorBruto.trim()
     if (def.tipo === 'numero' || def.tipo === 'inteiro') {
-      // Descarta uma unidade escrita depois do número: "10 °", "0.1745 rad".
-      const soNumero = /^[+-]?[\d.,]+(?:[eE][+-]?\d+)?/.exec(textoValor)?.[0] ?? ''
-      const n = interpretarNumero(soNumero)
-      if (n === null) {
-        erros.push(`${def.simbolo} exige um número; recebeu "${textoValor}".`)
+      const analise = interpretarEntradaNumerica(textoValor, def)
+      if (!analise.valido || analise.valor === undefined) {
+        erros.push(erroLocalizado(localizado, analise.mensagem ?? `${def.simbolo} exige um número; recebeu "${textoValor}".`))
         continue
       }
       atribuicoes.push({
         termo: termoBruto.trim(),
         id: def.id,
+        linha: localizado.linha,
+        posicao: localizado.posicao,
         ...(indice !== undefined ? { indice } : {}),
-        valor: n,
+        valor: analise.valor,
       })
     } else if (def.tipo === 'booleano') {
       const verdadeiro = ['1', 'true', 'sim', 'ligado', 'on'].includes(normalizarChave(textoValor))
       const falso = ['0', 'false', 'nao', 'desligado', 'off'].includes(normalizarChave(textoValor))
       if (!verdadeiro && !falso) {
-        erros.push(`${def.simbolo} aceita ligado/desligado; recebeu "${textoValor}".`)
+        erros.push(erroLocalizado(localizado, `${def.simbolo} aceita ligado/desligado; recebeu "${textoValor}".`))
         continue
       }
-      atribuicoes.push({ termo: termoBruto.trim(), id: def.id, valor: verdadeiro })
+      atribuicoes.push({ termo: termoBruto.trim(), id: def.id, linha: localizado.linha, posicao: localizado.posicao, valor: verdadeiro })
     } else {
-      atribuicoes.push({ termo: termoBruto.trim(), id: def.id, valor: textoValor })
+      atribuicoes.push({ termo: termoBruto.trim(), id: def.id, linha: localizado.linha, posicao: localizado.posicao, valor: textoValor })
     }
   }
 
@@ -159,24 +174,65 @@ export function interpretar(linha: string): ResultadoConsole {
 export function executar(store: Store, linha: string): ResultadoConsole {
   const analise = interpretar(linha)
   if (!analise.sucesso) return analise
+  const estadoAnterior = store.instantaneo()
 
-  const mensagens: string[] = []
   const erros: string[] = []
-
-  store.emLote(() => {
+  // A primeira passagem acontece sobre um clone: valida tipos, enums,
+  // derivados, limites dinâmicos e a ordem das atribuições sem tocar no estado
+  // real. Só uma linha inteiramente válida chega à segunda passagem.
+  const candidato = new Store(store.instantaneo())
+  candidato.emLote(() => {
     for (const a of analise.atribuicoes) {
       const def = POR_ID.get(a.id)
       if (def?.derivado === true) {
-        erros.push(`${def.simbolo} é calculado a partir de outros e não pode ser definido.`)
+        erros.push(`Linha ${a.linha}, posição ${a.posicao}: ${def.simbolo} é calculado a partir de outros e não pode ser definido.`)
         continue
       }
-      const resultado = store.definirParametro(a.id, a.valor, 'usuario')
-      if (resultado.mensagem !== undefined) mensagens.push(resultado.mensagem)
+      const resultado = candidato.definirParametro(a.id, a.valor, 'usuario')
       if (!resultado.aplicado && resultado.mensagem !== undefined) {
-        erros.push(resultado.mensagem)
+        erros.push(`Linha ${a.linha}, posição ${a.posicao}: ${resultado.mensagem}`)
       }
     }
   })
 
-  return { sucesso: erros.length === 0, atribuicoes: analise.atribuicoes, erros, mensagens }
+  if (erros.length > 0) {
+    return { sucesso: false, atribuicoes: analise.atribuicoes, erros, mensagens: [] }
+  }
+
+  const mensagens: string[] = []
+  store.emLote(() => {
+    for (const a of analise.atribuicoes) {
+      const resultado = store.definirParametro(a.id, a.valor, 'usuario')
+      if (resultado.mensagem !== undefined) mensagens.push(resultado.mensagem)
+    }
+  })
+
+  const definiuModo = analise.atribuicoes.some((atribuicao) => atribuicao.id === 'modo')
+  if (definiuModo) {
+    for (const id of ['alpha', 'theta0'] as const) {
+      const antes = estadoAnterior[id]
+      const depois = store.bruto(id)
+      const foiEscrito = analise.atribuicoes.some((atribuicao) => atribuicao.id === id)
+      if (!foiEscrito && typeof antes === 'number' && typeof depois === 'number' && antes !== depois) {
+        const def = POR_ID.get(id)!
+        mensagens.push(
+          `${def.simbolo} foi ajustado de ${antes}${def.unidade ?? ''} para ${depois}${def.unidade ?? ''} pela restrição geométrica do modo cicloidal.`,
+        )
+      }
+    }
+  }
+
+  return { sucesso: true, atribuicoes: analise.atribuicoes, erros: [], mensagens }
+}
+
+/** Produz um bloco que o próprio console consegue reimportar. */
+export function formatarEstadoConsole(store: Store): string {
+  const linhas: string[] = []
+  for (const [id, valor] of Object.entries(store.instantaneo())) {
+    const def = POR_ID.get(id)
+    if (def === undefined || def.derivado || typeof valor === 'object') continue
+    const texto = typeof valor === 'boolean' ? (valor ? 'ligado' : 'desligado') : String(valor)
+    linhas.push(`${id} = ${texto}${def.unidade === null ? '' : ` ${def.unidade}`}`)
+  }
+  return linhas.join('\n')
 }

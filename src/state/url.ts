@@ -179,14 +179,17 @@ export function aplicarAoStore(store: Store, fragmento: string): readonly AvisoU
   if (extras['run'] === '1') store.definirParametro('execucao', 'rodando', 'url')
   if (extras['vis'] !== undefined) {
     const modo = extras['vis'] === 'ambos' ? 'comparacao' : extras['vis']
+    const antes = { alpha: store.numero('alpha'), theta0: store.numero('theta0') }
     const resultado = store.definirParametro('modo', modo, 'url')
     if (resultado.mensagem !== undefined) acumulados.push({ chave: 'vis', mensagem: resultado.mensagem })
     // Restauração é uma nova experiência, não uma troca de vista em curso:
     // reaplica explicitamente os limites geométricos e expõe cada limitação.
     if (modo === 'cicloidal' || modo === 'comparacao') {
       for (const id of ['alpha', 'theta0'] as const) {
-        const limitado = store.definirParametro(id, store.numero(id), 'url')
-        if (limitado.mensagem !== undefined) acumulados.push({ chave: id, mensagem: limitado.mensagem })
+        const atual = store.numero(id)
+        if (atual !== antes[id]) {
+          acumulados.push({ chave: id, mensagem: `${id} = ${antes[id]} foi ajustado para ${atual}° pelo limite cicloidal de 90°.` })
+        }
       }
     }
   }
