@@ -84,3 +84,36 @@ Observations captured during task-oriented work.
 **Issue:** The request referred to files in the commit area, but the Git index was empty while the working tree contained the entire change set. Treating `git status` output as staged content would have produced misleading commit instructions.
 **Suggested improvement:** Begin commit planning by separately listing staged, modified, deleted, and untracked paths; state the interpreted scope before grouping, and use `git add -A` for groups containing renamed or hash-generated artifacts so deletions are not omitted.
 **Principle:** Atomic commit advice is reliable only when it is based on the exact Git layer being reviewed and accounts for both additions and deletions.
+
+### Observation 8: Phase audits must resolve requirement-number drift against normative text
+**Status:** OPEN
+**Date:** 2026-08-24
+**Session context:** Independent read-only audit of a phased implementation whose task table cited requirement identifiers that no longer matched the specification text.
+**Skill:** New skill candidate: implementation-audit
+**Type:** open-source
+**Phase/Area:** Traceability and acceptance-semantics verification
+**Issue:** A phase task cited a shifted requirement range, while the corresponding normative acceptance text required materially different error-handling behavior. Checking only the task row would have certified an implementation that contradicted the detailed specification.
+**Suggested improvement:** Add a traceability step that resolves every task's cited identifiers to their current normative text, detects numbering drift, and gives explicit precedence to acceptance scenarios or records the ambiguity before certification.
+**Principle:** Requirement IDs are pointers, not evidence; phase certification must compare implementation behavior with the current normative text and acceptance scenarios.
+
+### Observation 9: Green regression tests can encode the defect they should detect
+**Status:** OPEN
+**Date:** 2026-08-24
+**Session context:** Independent code review of a parameter UI whose keyboard and mode-transition tests passed while asserting behavior contrary to the normative acceptance criteria.
+**Skill:** New skill candidate: implementation-audit
+**Type:** open-source
+**Phase/Area:** Test-semantic review
+**Issue:** Tests confirmed that a precision modifier produced no observable value change and that switching modes preserved a value outside the destination domain. The suite was green because those regressions had been written as expected behavior.
+**Suggested improvement:** Add an audit step that translates each normative criterion into an observable postcondition and compares that postcondition with the test assertion, flagging assertions that merely preserve current behavior or invert the requirement.
+**Principle:** Passing tests prove conformance only when their asserted outcomes independently match the requirement; regression tests can otherwise institutionalize defects.
+
+### Observation 10: Latency tests must observe the final consumer
+**Status:** OPEN
+**Date:** 2026-08-24
+**Session context:** Certifying a parameter console whose synchronous Store and formula updates completed quickly while a throttled accessible scene description remained stale.
+**Skill:** New skill candidate: implementation-audit
+**Type:** open-source
+**Phase/Area:** End-to-end latency verification
+**Issue:** Measuring only the duration of the command handler proved internal write latency but missed the next animation frame and a slower downstream accessibility update. The reported sub-100 ms result therefore did not establish the product-level response promised to the user.
+**Suggested improvement:** For latency requirements, start timing at the user action and stop only after every named observable consumer has changed, including rendered values, scene state and accessible descriptions; assert the elapsed wall time in the browser.
+**Principle:** A latency budget belongs to the visible contract, not the fastest synchronous stage in its pipeline.
