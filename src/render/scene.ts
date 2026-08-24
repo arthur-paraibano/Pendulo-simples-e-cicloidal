@@ -230,6 +230,11 @@ export class RenderizadorCena {
     this.estaticaInvalida = true
   }
 
+  /** Faz a próxima pintura publicar também a descrição acessível da cena. */
+  invalidarDescricao(): void {
+    this.ultimaDescricaoEm = Number.NEGATIVE_INFINITY
+  }
+
   reiniciarEfeitos(): void {
     this.camadas.limpar('rastro')
     this.rastro.reiniciar()

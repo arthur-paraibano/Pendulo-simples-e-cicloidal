@@ -2,6 +2,11 @@
 
 import './styles/tokens.css'
 import './styles/scene.css'
+import './styles/ui.css'
+import '../vendor/katex/katex.min.css'
+// O build UMD oficial é importado como CommonJS pelo Vite e também exposto
+// para diagnóstico/versionamento no navegador.
+import katexRuntime from '../vendor/katex/katex.min.js'
 import { RuntimeCena } from './app/runtime.js'
 import { AgendadorQuadros } from './app/frame-scheduler.js'
 import { CamadasCanvas } from './render/layers.js'
@@ -10,6 +15,12 @@ import type { EstadoPenduloCena, ForcaVisual, OpcoesCena, QuadroCena, TemposCama
 import { Store } from './state/store.js'
 import type { Comando } from './state/execucao.js'
 import { aplicarAoStore } from './state/url.js'
+import { criarSeletorVisualizacao } from './ui/view-selector.js'
+import { criarPainelParametros } from './ui/panels/parametros.js'
+import { criarConsoleParametros } from './ui/param-console.js'
+import { criarPainelFormula } from './ui/formula.js'
+
+;(globalThis as typeof globalThis & { katex: KatexGlobal }).katex = katexRuntime
 
 const FORCAS_ACEITAS = new Set<ForcaVisual>(['peso', 'tracao', 'arrasto', 'externa', 'resultante'])
 
@@ -101,6 +112,14 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const saidaDiagnostico = secaoCena.querySelector<HTMLOutputElement>('#diagnostico-cena')!
   const store = new Store()
   const avisosUrl = aplicarAoStore(store, window.location.hash)
+  const cabecalho = document.querySelector<HTMLElement>('#cabecalho')
+  const recipienteSeletor = document.querySelector<HTMLElement>('#seletor-visualizacao')
+  const recipienteFormula = document.querySelector<HTMLElement>('#formula')
+  const recipienteParametros = document.querySelector<HTMLElement>('#painel-parametros')
+  if (cabecalho !== null) {
+    cabecalho.hidden = false
+    cabecalho.innerHTML = '<div><strong>Pêndulo</strong><span>Fórmula Completa</span></div><p>Uma fórmula-motor, dois regimes físicos.</p>'
+  }
   document.documentElement.dataset.tema = temaCss(store.texto('tema'))
   const camadas = new CamadasCanvas(palco)
   let solicitarRender = (): void => undefined
@@ -118,6 +137,14 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   let destruida = false
   let chaveEstadoControles = ''
   const botoes = [...secaoCena.querySelectorAll<HTMLButtonElement>('[data-acao]')]
+  const anunciar = (mensagem: string, erro = false): void => {
+    saidaEstado.textContent = mensagem
+    saidaEstado.dataset.estado = erro ? 'erro' : 'informacao'
+  }
+  const seletor = recipienteSeletor === null ? null : criarSeletorVisualizacao(recipienteSeletor, store, anunciar)
+  const formula = recipienteFormula === null ? null : criarPainelFormula(recipienteFormula, store)
+  const painel = recipienteParametros === null ? null : criarPainelParametros(recipienteParametros, store, anunciar)
+  const consoleParametros = recipienteParametros === null ? null : criarConsoleParametros(recipienteParametros, store, anunciar)
 
   const atualizarEstadoControles = (): void => {
     const execucao = store.texto('execucao')
@@ -142,7 +169,9 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   }
   const desenharUmaVez = (agora = performance.now(), dt = 0): void => {
     camadas.verificarDpr()
-    const tempos = cena.renderizar(prepararQuadro())
+    const quadroAtual = prepararQuadro()
+    const tempos = cena.renderizar(quadroAtual)
+    painel?.atualizarDinamica(quadroAtual.pendulos, agora)
     diagnostico.adicionar(dt, tempos)
     if (agora - ultimoDiagnostico >= 1000) {
       ultimoDiagnostico = agora
@@ -183,11 +212,12 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     else if (acao === 'passo') { runtime.passo(); solicitarRender() }
   }
   secaoCena.addEventListener('click', aoClicarControle)
-  const cancelarStore = store.assinar(null, (alteradas) => {
-    const { reiniciou } = runtime.aplicarAlteracoes(alteradas)
+  const cancelarStore = store.assinar(null, (alteradas, contexto) => {
+    const { reiniciou } = runtime.aplicarAlteracoes(alteradas, contexto.explicitas)
     opcoes = construirOpcoes(store)
     document.documentElement.dataset.tema = temaCss(store.texto('tema'))
     cena.invalidarEstatica()
+    cena.invalidarDescricao()
     if (reiniciou) cena.reiniciarEfeitos()
     agendador.definirAnimando(runtime.controle.rodando)
     solicitarRender()
@@ -213,6 +243,10 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     agendador.destruir()
     cancelarStore()
     runtime.destruir()
+    seletor?.destruir()
+    formula?.destruir()
+    consoleParametros?.destruir()
+    painel?.destruir()
     secaoCena.removeEventListener('click', aoClicarControle)
     document.removeEventListener('visibilitychange', aoMudarVisibilidade)
     window.removeEventListener('pagehide', aoOcultarPagina)

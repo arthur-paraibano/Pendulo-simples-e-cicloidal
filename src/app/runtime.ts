@@ -60,13 +60,28 @@ export class RuntimeCena {
     return this.runtimes.get(modo)?.motor.tempoSolicitado ?? null
   }
 
-  aplicarAlteracoes(chaves: ReadonlySet<string>): { readonly reiniciou: boolean } {
+  aplicarAlteracoes(
+    chaves: ReadonlySet<string>,
+    explicitas: ReadonlySet<string> = chaves,
+  ): { readonly reiniciou: boolean } {
     if (chaves.has('execucao')) {
       const desejado = this.store.texto('execucao') as 'parado' | 'rodando' | 'pausado'
       if (desejado !== this.controle.estado) this.controle.sincronizar(desejado)
     }
     // Visualização é projeção, não condição inicial: nunca rebobina motores.
-    if (chaves.has('modo')) this.garantirModosVisiveis()
+    const trocouModo = chaves.has('modo')
+    if (trocouModo) this.garantirModosVisiveis()
+    const parametrosIniciais = new Set(['alpha', 'theta0', 'h0'])
+    const somenteAjusteDeDominio = trocouModo
+      && [...chaves].every((id) => id === 'modo' || parametrosIniciais.has(id))
+      && ![...explicitas].some((id) => parametrosIniciais.has(id))
+    if (somenteAjusteDeDominio) {
+      // A entrada no cicloidal pode limitar condições incompatíveis. O
+      // motor já em execução e o relógio sobrevivem; apenas um modo que
+      // antes não podia existir é criado no mesmo instante corrente.
+      this.garantirModosVisiveis()
+      return { reiniciou: false }
+    }
     let estrutural = false
     for (const id of chaves) {
       if (CHAVES_DINAMICA.has(id)) {
