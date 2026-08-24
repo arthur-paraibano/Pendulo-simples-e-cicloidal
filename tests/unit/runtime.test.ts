@@ -3,11 +3,12 @@ import { RuntimeCena } from '../../src/app/runtime.js'
 import { dinamicaIdeal, validarEstadoCicloidalInicial } from '../../src/physics/ode.js'
 import { kg, metro, mPorS2 } from '../../src/physics/units.js'
 import { Store } from '../../src/state/store.js'
+import { executar } from '../../src/state/console.js'
 import { aplicarAoStore, desserializar } from '../../src/state/url.js'
 import type { EstadoPenduloCena } from '../../src/render/types.js'
 
 function conectar(store: Store, runtime: RuntimeCena): () => void {
-  return store.assinar(null, (chaves) => runtime.aplicarAlteracoes(chaves))
+  return store.assinar(null, (chaves, contexto) => runtime.aplicarAlteracoes(chaves, contexto.explicitas))
 }
 
 describe('runtime da cena', () => {
@@ -19,7 +20,7 @@ describe('runtime da cena', () => {
     runtime.aplicarComando('reproduzir')
     runtime.avancar(0.1)
     expect(store.numero('t')).toBeGreaterThan(0.09)
-    expect(store.numero('t')).toBeLessThanOrEqual(0.1)
+    expect(store.numero('t')).toBeCloseTo(0.1, 12)
     expect(notificouTempo).not.toHaveBeenCalled()
   })
 
@@ -28,7 +29,7 @@ describe('runtime da cena', () => {
     aplicarAoStore(store, '#v=1&t=2.5&run=1&vis=ambos')
     const runtime = new RuntimeCena(store)
     const estados: EstadoPenduloCena[] = []
-    expect(store.numero('t')).toBe(2.5)
+    expect(store.numero('t')).toBeCloseTo(2.5, 12)
     expect(runtime.controle.rodando).toBe(true)
     expect(runtime.estadosVisiveis(estados)).toHaveLength(2)
     expect(estados[0]!.tempo).toBe(2.5)
@@ -39,13 +40,13 @@ describe('runtime da cena', () => {
     aplicarAoStore(store, '#v=1&fonteMovimento=integracao&t=2.5')
     const runtime = new RuntimeCena(store)
     const estados: EstadoPenduloCena[] = []
-    expect(store.numero('t')).toBe(2.5)
+    expect(store.numero('t')).toBeCloseTo(2.5, 12)
     expect(runtime.tempoDoModo('simples')).toBeCloseTo(2.5, 12)
     expect(runtime.tempoDoModo('cicloidal')).toBeCloseTo(2.5, 12)
     expect(runtime.estadosVisiveis(estados)[0]!.tempo).toBeCloseTo(2.5, 12)
   })
 
-  it('troca para comparação acima de 90 graus sem rebobinar o simples sobrevivente', () => {
+  it('troca para comparação, ajusta o domínio e não rebobina o simples sobrevivente', () => {
     const store = new Store({ fonteMovimento: 'integracao' })
     const runtime = new RuntimeCena(store)
     const desconectar = conectar(store, runtime)
@@ -55,10 +56,32 @@ describe('runtime da cena', () => {
     const antes = runtime.tempoDoModo('simples')!
     store.definirParametro('modo', 'comparacao')
     expect(runtime.tempoDoModo('simples')).toBe(antes)
-    expect(runtime.temModo('cicloidal')).toBe(false)
-    expect(runtime.erroVisivel).toMatch(/cicloidal|π\/2|theta/i)
+    expect(store.numero('theta0')).toBe(90)
+    expect(runtime.temModo('cicloidal')).toBe(true)
+    expect(runtime.erroVisivel).toBeNull()
     runtime.avancar(0.1)
     expect(runtime.tempoDoModo('simples')).toBeGreaterThan(antes)
+    desconectar()
+  })
+
+  it('reinicia a integração para um lote intencional de modo e condições iniciais do console', async () => {
+    const store = new Store({ fonteMovimento: 'integracao' })
+    const runtime = new RuntimeCena(store)
+    const desconectar = conectar(store, runtime)
+    runtime.aplicarComando('reproduzir')
+    runtime.avancar(0.2)
+    expect(runtime.tempoDoModo('simples')).toBeGreaterThan(0)
+
+    const resultado = executar(store, 'modo=cicloidal; theta0=35; alpha=30; h0=0,25')
+    expect(resultado.sucesso).toBe(true)
+    await Promise.resolve()
+
+    const estados: EstadoPenduloCena[] = []
+    expect(runtime.controle.estado).toBe('pausado')
+    expect(runtime.tempo).toBe(0)
+    expect(store.numero('alpha')).toBe(45)
+    expect(runtime.estadosVisiveis(estados)[0]?.theta).toBeCloseTo((35 * Math.PI) / 180, 12)
+    expect(estados[0]?.alphaInicial).toBeCloseTo(Math.PI / 4, 12)
     desconectar()
   })
 

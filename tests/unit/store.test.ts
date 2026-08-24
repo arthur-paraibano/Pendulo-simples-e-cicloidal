@@ -79,10 +79,10 @@ describe('Store: validação e limitação', () => {
     expect(r.mensagem).toContain('número')
   })
 
-  it('arredonda à precisão declarada', () => {
+  it('preserva a precisão interna além das casas usadas na apresentação', () => {
     const s = new Store()
     s.definirParametro('alpha', 10.123456)
-    expect(s.numero('alpha')).toBe(10.1)
+    expect(s.numero('alpha')).toBe(10.123456)
   })
 
   it('arredonda inteiros', () => {
@@ -136,21 +136,20 @@ describe('Store: limites dinâmicos', () => {
     expect(s.definirParametro('alpha', 120).valor).toBe(120)
   })
 
-  it('não reescreve a condição do simples ao apenas mudar a visualização', () => {
-    // RF-025: a mudança é comunicada, e o valor deixa de violar a geometria.
+  it('ajusta a amplitude incompatível ao entrar no cicloidal', () => {
     const s = new Store()
     s.definirParametro('alpha', 150)
     s.definirParametro('modo', 'cicloidal')
-    expect(s.numero('alpha')).toBe(150)
+    expect(s.numero('alpha')).toBe(90)
   })
 
-  it('preserva amplitude e angulo inicial preexistentes na comparação', () => {
+  it('preserva os compatíveis e ajusta alpha/theta0 na comparação', () => {
     const s = new Store()
     s.definirParametro('alpha', 150)
     s.definirParametro('theta0', -140)
     s.definirParametro('modo', 'comparacao')
-    expect(s.numero('alpha')).toBe(150)
-    expect(s.numero('theta0')).toBe(-140)
+    expect(s.numero('alpha')).toBe(90)
+    expect(s.numero('theta0')).toBe(-90)
     expect(s.definirParametro('alpha', 120).valor).toBe(90)
     expect(s.definirParametro('theta0', 120).valor).toBe(90)
   })
@@ -277,6 +276,16 @@ describe('Store: notificação', () => {
       s.definirParametro('N', 5)
     })
     expect(ouvinte).toHaveBeenCalledTimes(1)
+  })
+
+  it('distingue no lote as escritas explícitas das derivações automáticas', () => {
+    const s = new Store({ alpha: 120, theta0: 110 })
+    const ouvinte = vi.fn()
+    s.assinar(null, ouvinte)
+    s.definirParametro('modo', 'cicloidal')
+    const contexto = ouvinte.mock.calls[0]![1]
+    expect([...contexto.explicitas]).toEqual(['modo'])
+    expect([...contexto.derivadas]).toEqual(expect.arrayContaining(['alpha', 'theta0', 'h0']))
   })
 
   it('cancela a assinatura', () => {

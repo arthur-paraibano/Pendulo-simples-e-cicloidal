@@ -142,6 +142,10 @@ describe('paleta e renderizador composto', () => {
       visualizacao: 'comparacao', pendulos: [estado('simples'), estado('cicloidal')], opcoes,
     }
     cena.renderizar(quadro)
+    expect(camadas.overlay.setAttribute).toHaveBeenCalledTimes(1)
+    cena.invalidarDescricao()
+    cena.renderizar(quadro)
+    expect(camadas.overlay.setAttribute).toHaveBeenCalledTimes(2)
     ;(camadas.limpar as ReturnType<typeof vi.fn>).mockClear()
     cena.renderizar({ ...quadro, opcoes: { ...opcoes, intervaloEstroboscopio: 0.2 } })
     expect(camadas.limpar).toHaveBeenCalledWith('rastro')
