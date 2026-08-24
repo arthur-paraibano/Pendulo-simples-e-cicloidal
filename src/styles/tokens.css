@@ -13,8 +13,8 @@
   --cor-fundo: #ffffff;
   --cor-fundo-painel: #f6f7f9;
   --cor-fundo-elevado: #ffffff;
-  --cor-borda: #d6d9de;
-  --cor-borda-forte: #a8adb6;
+  --cor-borda: #737984;
+  --cor-borda-forte: #5f6570;
   --cor-texto: #16181d;
   --cor-texto-suave: #565c66;
   --cor-texto-inverso: #ffffff;
@@ -44,10 +44,10 @@
 
   /* ── Cena ────────────────────────────────────────────────────────────── */
   --cor-cena-fundo: #fbfcfd;
-  --cor-cena-grade: #e6e8ec;
-  --cor-cena-eixo: #9aa0aa;
+  --cor-cena-grade: #737984;
+  --cor-cena-eixo: #656b75;
   --cor-face-cicloidal: #16181d;
-  --cor-trajetoria: #9aa0aa;
+  --cor-trajetoria: #656b75;
   --cor-sensor: #15803d;
   --cor-sensor-disparo: #22c55e;
 
@@ -82,8 +82,8 @@
     --cor-fundo: #0f1116;
     --cor-fundo-painel: #171a21;
     --cor-fundo-elevado: #1d212a;
-    --cor-borda: #2b303b;
-    --cor-borda-forte: #454c5a;
+    --cor-borda: #697386;
+    --cor-borda-forte: #8b96aa;
     --cor-texto: #e8eaee;
     --cor-texto-suave: #a0a7b4;
     --cor-texto-inverso: #0f1116;
@@ -108,10 +108,10 @@
     --cor-energia-total: #e8eaee;
 
     --cor-cena-fundo: #12151b;
-    --cor-cena-grade: #232833;
-    --cor-cena-eixo: #6b7280;
+    --cor-cena-grade: #697386;
+    --cor-cena-eixo: #8b96aa;
     --cor-face-cicloidal: #e8eaee;
-    --cor-trajetoria: #6b7280;
+    --cor-trajetoria: #8b96aa;
     --cor-sensor: #4ade80;
     --cor-sensor-disparo: #86efac;
 
@@ -124,8 +124,8 @@
   --cor-fundo: #0f1116;
   --cor-fundo-painel: #171a21;
   --cor-fundo-elevado: #1d212a;
-  --cor-borda: #2b303b;
-  --cor-borda-forte: #454c5a;
+  --cor-borda: #697386;
+  --cor-borda-forte: #8b96aa;
   --cor-texto: #e8eaee;
   --cor-texto-suave: #a0a7b4;
   --cor-texto-inverso: #0f1116;
@@ -150,10 +150,10 @@
   --cor-energia-total: #e8eaee;
 
   --cor-cena-fundo: #12151b;
-  --cor-cena-grade: #232833;
-  --cor-cena-eixo: #6b7280;
+  --cor-cena-grade: #697386;
+  --cor-cena-eixo: #8b96aa;
   --cor-face-cicloidal: #e8eaee;
-  --cor-trajetoria: #6b7280;
+  --cor-trajetoria: #8b96aa;
   --cor-sensor: #4ade80;
   --cor-sensor-disparo: #86efac;
 
