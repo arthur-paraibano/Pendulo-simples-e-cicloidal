@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Store } from '../../src/state/store.js'
 import {
   aplicarPreset,
@@ -9,7 +9,7 @@ import {
   validarPreset,
 } from '../../src/state/presets.js'
 import { Historico, JANELA_AGRUPAMENTO_MS, LIMITE_PILHA } from '../../src/state/history.js'
-import { ColecaoMedicoes, entradaDeMedicao } from '../../src/state/measurements.js'
+import { ColecaoMedicoes, entradaDeMedicao, LIMITE_LINHAS, type Medicao } from '../../src/state/measurements.js'
 import { ControleExecucao, ehEstrutural, transicionar } from '../../src/state/execucao.js'
 import { ArmazenamentoMemoria, Persistencia } from '../../src/state/persist.js'
 import { periodoExato } from '../../src/physics/period.js'
@@ -294,6 +294,9 @@ describe('ColecaoMedicoes', () => {
     expect(() =>
       c.registrar({ ...entrada('simples', 10), T: segundo(0) }),
     ).toThrow(/positivo/)
+    expect(() =>
+      c.registrar({ ...entrada('simples', 10), T: segundo(Number.POSITIVE_INFINITY) }),
+    ).toThrow(/positivo/)
   })
 
   it('remove uma linha e recalcula', () => {
@@ -336,6 +339,15 @@ describe('ColecaoMedicoes', () => {
     expect(c.estatisticasDe('gInferidoIngenuo').media).toBeLessThan(9.81)
   })
 
+  it('normaliza meio período para não misturar grandezas nas estatísticas de T', () => {
+    const c = new ColecaoMedicoes()
+    const completa = entrada('simples', 10)
+    c.registrar(completa)
+    c.registrar({ ...completa, T: segundo(completa.T / 2), grandeza: 'meioPeriodo' })
+    expect(c.estatisticasDe('T').media).toBeCloseTo(completa.T, 12)
+    expect(c.estatisticasDe('T').desvioPadrao).toBeCloseTo(0, 12)
+  })
+
   it('com uma linha só, não afirma dispersão', () => {
     const c = new ColecaoMedicoes()
     c.registrar(entrada('simples', 10))
@@ -366,6 +378,127 @@ describe('ColecaoMedicoes', () => {
     outra.carregar(salvo)
     expect(outra.contagem).toBe(2)
     expect(outra.registrar(entrada('simples', 30)).n).toBe(3)
+  })
+
+  it('aceita recarregar a própria visão e não expõe o array interno', () => {
+    const c = new ColecaoMedicoes()
+    c.registrar(entrada('simples', 10))
+    c.registrar(entrada('cicloidal', 20))
+    const visao = c.todas
+    ;(visao as Medicao[]).pop()
+    expect(c.contagem).toBe(2)
+
+    c.carregar(c.todas)
+    expect(c.todas.map((medicao) => medicao.n)).toEqual([1, 2])
+    expect(c.registrar(entrada('simples', 30)).n).toBe(3)
+  })
+
+  it('limita também o histórico carregado e preserva as linhas mais recentes', () => {
+    const origem = new ColecaoMedicoes()
+    const base = origem.registrar(entrada('simples', 10))
+    const linhas = Array.from({ length: LIMITE_LINHAS + 2 }, (_, indice) => ({
+      ...base,
+      n: indice + 1,
+    }))
+    origem.carregar(linhas)
+    expect(origem.contagem).toBe(LIMITE_LINHAS)
+    expect(origem.todas[0]!.n).toBe(3)
+    expect(origem.registrar(entrada('simples', 20)).n).toBe(LIMITE_LINHAS + 3)
+    expect(origem.paginaOrdenada('n', 'asc', 0, 100)).toHaveLength(100)
+    expect(origem.paginaOrdenada('n', 'desc', 0, 100)[0]!.n).toBe(LIMITE_LINHAS + 3)
+    expect(origem.paginaOrdenada('pendulo', 'asc', 0, 2)).toHaveLength(2)
+    expect(origem.paginaOrdenada('n', 'asc', LIMITE_LINHAS, 100)).toEqual([])
+    expect(origem.paginaOrdenada('n', 'asc', 0, 0)).toEqual([])
+    expect(origem.contagem).toBe(LIMITE_LINHAS)
+  })
+
+  it('notifica todas as apresentações da coleção única sem duplicar registros', () => {
+    const c = new ColecaoMedicoes()
+    let notificacoes = 0
+    const cancelar = c.assinar(() => { notificacoes += 1 })
+    c.registrar(entrada('simples', 10))
+    c.remover(1)
+    c.carregar([c.registrar(entrada('cicloidal', 20))])
+    cancelar()
+    c.limpar()
+    expect(notificacoes).toBe(4)
+    expect(c.contagem).toBe(0)
+  })
+
+  it('coleta manual imediatamente e respeita a grandeza meio período', () => {
+    const store = new Store()
+    expect(store.coletarMedicaoManual('simples', 0).T).toBeCloseTo(2.009893, 6)
+    store.definirParametro('modoContagem', 'meioPeriodo')
+    expect(store.coletarMedicaoManual('cicloidal', 1).T).toBeCloseTo(1.003033, 6)
+    expect(store.selecionarMedicoes()[1]!.origem).toBe('manual')
+  })
+
+  it('ancora a coleta automática em uma direção: uma linha por ciclo', () => {
+    const store = new Store()
+    const passagem = (t: number, sentido: -1 | 1, numeroTravessia: number) => ({
+      t: segundo(t),
+      sentido,
+      qPonto: sentido,
+      numeroTravessia,
+    })
+    store.definirColetaAutomatica(true)
+    expect(store.selecionarColetaAutomatica()).toBe(true)
+    expect(store.registrarPassagemSensor('simples', passagem(0.5, -1, 0), g(10))).toBeNull()
+    expect(store.registrarPassagemSensor('simples', passagem(1, 1, 1), g(10))).toBeNull()
+    expect(store.registrarPassagemSensor('simples', passagem(1.5, -1, 2), g(9))).not.toBeNull()
+    expect(store.registrarPassagemSensor('simples', passagem(2, 1, 3), g(8))).toBeNull()
+    expect(store.registrarPassagemSensor('simples', passagem(2.5, -1, 4), g(7))).not.toBeNull()
+    expect(store.selecionarMedicoes()).toHaveLength(2)
+    expect(store.selecionarMedicoes().map((m) => m.alphaGraus)).toEqual([9, 7])
+    store.definirColetaAutomatica(false)
+    expect(store.registrarPassagemSensor('simples', passagem(3.5, -1, 5), g(10))).toBeNull()
+    store.reiniciarSensorColeta()
+    store.definirColetaAutomatica(true)
+    expect(store.registrarPassagemSensor('cicloidal', passagem(4, 1, 0), g(10))).toBeNull()
+    expect(store.selecionarMedicoes()).toHaveLength(2)
+  })
+
+  it('delimita séries ao pausar/retomar e ao relógio voltar, sem períodos espúrios', () => {
+    const store = new Store()
+    const passagem = (t: number, sentido: -1 | 1, numeroTravessia: number) => ({
+      t: segundo(t), sentido, qPonto: sentido, numeroTravessia,
+    })
+    store.definirColetaAutomatica(true)
+    store.registrarPassagemSensor('simples', passagem(1, -1, 0), g(10))
+    store.registrarPassagemSensor('simples', passagem(2, 1, 1), g(10))
+    store.definirColetaAutomatica(false)
+    store.registrarPassagemSensor('simples', passagem(100, -1, 2), g(10))
+    store.definirColetaAutomatica(true)
+    expect(store.registrarPassagemSensor('simples', passagem(101, 1, 3), g(10))).toBeNull()
+    expect(store.selecionarMedicoes()).toHaveLength(0)
+    expect(store.registrarPassagemSensor('simples', passagem(0.5, -1, 0), g(10))).toBeNull()
+    expect(store.selecionarMedicoes()).toHaveLength(0)
+  })
+
+  it('faz da coleção uma parte única e acessível do Store', () => {
+    const store = new Store()
+    const notificou = vi.fn()
+    const cancelar = store.assinarMedicoes(notificou)
+    store.registrarMedicao(entrada('simples', 10))
+    expect(store.selecionarMedicoes()).toHaveLength(1)
+    expect(store.ordenarMedicoes('n')).toHaveLength(1)
+    expect(store.estatisticasMedicoes('T').contagem).toBe(1)
+    store.removerMedicao(1)
+    expect(notificou).toHaveBeenCalledTimes(2)
+    cancelar()
+  })
+
+  it('carrega e limpa medições pela porta única do Store', () => {
+    const origem = new Store()
+    origem.registrarMedicao(entrada('simples', 10))
+    origem.registrarMedicao(entrada('cicloidal', 20))
+
+    const destino = new Store()
+    destino.carregarMedicoes(origem.selecionarMedicoes())
+    expect(destino.contagemMedicoes()).toBe(2)
+    expect(destino.paginarMedicoes('n', 'asc', 0, 1)).toHaveLength(1)
+    destino.limparTabela()
+    expect(destino.selecionarMedicoes()).toEqual([])
   })
 })
 

@@ -160,6 +160,92 @@ describe('runtime da cena', () => {
     expect(estados[0]!.ultimoDisparoSensor).not.toBeNull()
   })
 
+  it('publica cada passagem interpolada da fonte por fórmula para a coleta', () => {
+    const store = new Store()
+    const runtime = new RuntimeCena(store)
+    const estados: EstadoPenduloCena[] = []
+    const passagens: number[] = []
+    const cancelar = runtime.assinarPassagens(({ modo, evento }) => {
+      if (modo === 'simples') passagens.push(evento.t)
+    })
+    runtime.estadosVisiveis(estados)
+    runtime.aplicarComando('reproduzir')
+    for (let i = 0; i < 80; i++) {
+      runtime.avancar(0.05)
+      runtime.estadosVisiveis(estados)
+    }
+    cancelar()
+    expect(passagens.length).toBeGreaterThanOrEqual(3)
+    expect(passagens[2]! - passagens[0]!).toBeCloseTo(2.009893, 3)
+  })
+
+  it('detecta todas as travessias de períodos curtos sem depender do FPS ou da projeção', () => {
+    const coletar = (particoes: readonly number[]): number[] => {
+      const store = new Store({ L: 0.05, g: 30, alpha: 10, theta0: 10, escalaTempo: 4 })
+      const runtime = new RuntimeCena(store)
+      const passagens: number[] = []
+      runtime.assinarPassagens(({ modo, evento }) => {
+        if (modo === 'simples') passagens.push(evento.t)
+      })
+      runtime.aplicarComando('reproduzir')
+      for (const dt of particoes) runtime.avancar(dt)
+      return passagens
+    }
+
+    const quadroLento = coletar([0.0625]) // 0,25 s simulados em um único quadro
+    const quadrosRapidos = coletar(Array.from({ length: 25 }, () => 0.0025))
+    expect(quadroLento).toHaveLength(2)
+    expect(quadrosRapidos).toHaveLength(quadroLento.length)
+    for (let i = 0; i < quadroLento.length; i++) {
+      expect(quadrosRapidos[i]).toBeCloseTo(quadroLento[i]!, 12)
+    }
+  })
+
+  it('publica a amplitude do instante da passagem sob amortecimento', () => {
+    const store = new Store({
+      fonteMovimento: 'integracao', modeloAtrito: 'viscoso', b: 0.5,
+      alpha: 45, theta0: 45,
+    })
+    const runtime = new RuntimeCena(store)
+    const amplitudes: number[] = []
+    runtime.assinarPassagens(({ modo, alpha }) => {
+      if (modo === 'simples') amplitudes.push(alpha)
+    })
+    runtime.aplicarComando('reproduzir')
+    for (let i = 0; i < 80; i++) runtime.avancar(0.05)
+    expect(amplitudes.length).toBeGreaterThanOrEqual(3)
+    expect(amplitudes.at(-1)).toBeLessThan(amplitudes[0]!)
+    expect(amplitudes[0]).toBeLessThan(45 * Math.PI / 180)
+  })
+
+  it('expõe a amplitude corrente nos dois motores e null para modo indisponível', () => {
+    const store = new Store({ modo: 'comparacao', alpha: 30, theta0: 30 })
+    const runtime = new RuntimeCena(store)
+    expect(runtime.amplitudeDoModo('simples')).toBeCloseTo(Math.PI / 6, 12)
+    expect(runtime.amplitudeDoModo('cicloidal')).toBeCloseTo(Math.PI / 6, 12)
+
+    const invalido = new RuntimeCena(new Store({
+      modo: 'comparacao', theta0: 80, omega0: 10,
+    }))
+    expect(invalido.amplitudeDoModo('simples')).not.toBeNull()
+    expect(invalido.amplitudeDoModo('cicloidal')).toBeNull()
+  })
+
+  it('coleta manual amortecida com a amplitude física instantânea', () => {
+    const store = new Store({
+      fonteMovimento: 'integracao', modeloAtrito: 'viscoso', b: 0.5,
+      alpha: 45, theta0: 45,
+    })
+    const runtime = new RuntimeCena(store)
+    runtime.aplicarComando('reproduzir')
+    for (let i = 0; i < 40; i++) runtime.avancar(0.05)
+    const alphaAtual = runtime.amplitudeDoModo('simples')!
+    const medicao = store.coletarMedicaoManual('simples', runtime.tempo, alphaAtual)
+
+    expect(medicao.alphaGraus).toBeCloseTo((alphaAtual * 180) / Math.PI, 10)
+    expect(medicao.alphaGraus).toBeLessThan(45)
+  })
+
   it('renderiza a fonte integrada, RK4 e registra passagem pelo sensor', () => {
     const store = new Store({ fonteMovimento: 'integracao', integrador: 'rk4', theta0: 20 })
     const runtime = new RuntimeCena(store)
@@ -170,6 +256,18 @@ describe('runtime da cena', () => {
     expect(estados).toHaveLength(1)
     expect(estados[0]!.tempo).toBeGreaterThan(2)
     expect(estados[0]!.ultimoDisparoSensor).not.toBeNull()
+  })
+
+  it('publica as passagens integradas mesmo antes de projetar a cena', () => {
+    const store = new Store({ fonteMovimento: 'integracao' })
+    const runtime = new RuntimeCena(store)
+    const passagens: number[] = []
+    runtime.assinarPassagens(({ modo, evento }) => {
+      if (modo === 'simples') passagens.push(evento.t)
+    })
+    runtime.aplicarComando('reproduzir')
+    for (let i = 0; i < 12; i++) runtime.avancar(0.2)
+    expect(passagens.length).toBeGreaterThanOrEqual(2)
   })
 
   it('pausa e reinicia uma mudança estrutural em curso', async () => {

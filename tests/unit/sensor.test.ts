@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   detectarCruzamento,
+  MAX_EVENTOS_SENSOR,
   periodoDeEventos,
   periodoMedio,
   SensorZero,
@@ -117,6 +118,16 @@ describe('SensorZero', () => {
     s.processar(est(1, -1, 2), est(2, 1, 2)) // t = 1,5, sentido +1
     s.processar(est(2, 1, -2), est(3, -1, -2)) // t = 2,5, sentido −1
     expect(s.periodo('meioPeriodo')).toBeCloseTo(1, 12)
+    expect(s.periodo('periodoCompleto')).toBeCloseTo(2, 12)
+  })
+
+  it('mantém apenas o histórico mínimo necessário para calcular o período', () => {
+    const s = new SensorZero()
+    for (let i = 0; i < 20; i++) {
+      const sinal = i % 2 === 0 ? 1 : -1
+      s.processar(est(i, sinal, -sinal), est(i + 1, -sinal, -sinal))
+    }
+    expect(s.passagens).toHaveLength(MAX_EVENTOS_SENSOR)
     expect(s.periodo('periodoCompleto')).toBeCloseTo(2, 12)
   })
 })

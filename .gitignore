@@ -3,6 +3,7 @@ node_modules/
 dist-single/
 coverage/
 playwright-report/
+debug.log
 test-results/
 .vite/
 *.local
