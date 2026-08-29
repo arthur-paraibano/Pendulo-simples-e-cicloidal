@@ -1,8 +1,9 @@
 import { MotorPendulo } from '../physics/engine.js'
 import { aceleracaoGeneralizada, exigirModeloAtritoImplementado, type ParametrosDinamica } from '../physics/ode.js'
 import { periodoExato, periodoPequenaAmplitude } from '../physics/period.js'
+import type { EventoPassagem } from '../physics/sensor.js'
 import type { ModoPendulo } from '../physics/types.js'
-import { grausParaRad, deg, kg, metro, mPorS2 } from '../physics/units.js'
+import { grausParaRad, deg, kg, metro, mPorS2, segundo, type Rad } from '../physics/units.js'
 import type { EstadoPenduloCena } from '../render/types.js'
 import { ControleExecucao, type Comando } from '../state/execucao.js'
 import type { Store } from '../state/store.js'
@@ -14,7 +15,7 @@ interface RuntimePendulo {
   readonly T0: number
   readonly periodo: number
   ultimoDisparo: number | null
-  qFormulaAnterior: number | null
+  travessiasFormula: number
   estadoCena?: EstadoPenduloCenaMutavel
 }
 
@@ -25,11 +26,21 @@ const CHAVES_DINAMICA = new Set([
   'amplitudeForcamento', 'omegaForcamento', 'faseForcamento',
 ])
 
+export interface PassagemRuntime {
+  readonly modo: ModoPendulo
+  readonly evento: EventoPassagem
+  /** Amplitude física equivalente no instante exato da passagem. */
+  readonly alpha: Rad
+}
+
+type OuvintePassagem = (passagem: PassagemRuntime) => void
+
 /** Runtime sem DOM: coordena Store, relógio e os dois motores testavelmente. */
 export class RuntimeCena {
   readonly controle: ControleExecucao
   private readonly runtimes = new Map<ModoPendulo, RuntimePendulo>()
   private readonly erros = new Map<ModoPendulo, string>()
+  private readonly ouvintesPassagem = new Set<OuvintePassagem>()
   private tempoFormula: number
 
   constructor(readonly store: Store) {
@@ -58,6 +69,24 @@ export class RuntimeCena {
 
   tempoDoModo(modo: ModoPendulo): number | null {
     return this.runtimes.get(modo)?.motor.tempoSolicitado ?? null
+  }
+
+  /** Amplitude física corrente, distinta da amplitude inicial configurada. */
+  amplitudeDoModo(modo: ModoPendulo): Rad | null {
+    const runtime = this.runtimes.get(modo)
+    if (runtime === undefined) return null
+    if (this.store.texto('fonteMovimento') === 'integracao') {
+      const atual = runtime.motor.atual
+      return this.amplitudeEquivalente(runtime.modo, atual.q, atual.qPonto)
+    }
+    const estado = this.estadoHarmonico(runtime, this.tempoFormula)
+    return this.amplitudeEquivalente(runtime.modo, estado.q, estado.qPonto)
+  }
+
+  /** Observa o mesmo sensor fixo que aciona o marcador visual. */
+  assinarPassagens(ouvinte: OuvintePassagem): () => void {
+    this.ouvintesPassagem.add(ouvinte)
+    return () => this.ouvintesPassagem.delete(ouvinte)
   }
 
   aplicarAlteracoes(
@@ -116,7 +145,9 @@ export class RuntimeCena {
     if (this.store.texto('fonteMovimento') === 'integracao') {
       for (const runtime of this.runtimes.values()) this.avancarRuntime(runtime, () => runtime.motor.avancarPassos(1))
     } else {
+      const inicio = this.tempoFormula
       this.tempoFormula += this.store.numero('dt')
+      for (const runtime of this.runtimes.values()) this.emitirTravessiasFormula(runtime, inicio, this.tempoFormula)
     }
     this.sincronizarRelogio()
   }
@@ -124,12 +155,17 @@ export class RuntimeCena {
   avancar(dt: number): void {
     if (!this.controle.rodando) return
     const escala = this.store.numero('escalaTempo')
+    const deltaSimulado = Math.min(0.25, Math.max(0, dt) * escala)
     if (this.store.texto('fonteMovimento') === 'integracao') {
       for (const runtime of this.runtimes.values()) {
         this.avancarRuntime(runtime, () => runtime.motor.avancar(dt, escala))
       }
+    } else {
+      const inicio = this.tempoFormula
+      const fim = inicio + deltaSimulado
+      for (const runtime of this.runtimes.values()) this.emitirTravessiasFormula(runtime, inicio, fim)
     }
-    this.tempoFormula += Math.min(0.25, Math.max(0, dt) * escala)
+    this.tempoFormula += deltaSimulado
     this.sincronizarRelogio()
   }
 
@@ -144,6 +180,7 @@ export class RuntimeCena {
   destruir(): void {
     this.runtimes.clear()
     this.erros.clear()
+    this.ouvintesPassagem.clear()
   }
 
   private parametrosDinamica(modo: ModoPendulo): ParametrosDinamica {
@@ -182,7 +219,7 @@ export class RuntimeCena {
       T0: periodoPequenaAmplitude(L, g),
       periodo: periodoExato(L, g, alpha, modo),
       ultimoDisparo: null,
-      qFormulaAnterior: null,
+      travessiasFormula: 0,
     }
   }
 
@@ -217,6 +254,13 @@ export class RuntimeCena {
       const eventos = acao()
       const ultimo = eventos.at(-1)
       if (ultimo !== undefined) runtime.ultimoDisparo = ultimo.t
+      for (const evento of eventos as readonly EventoPassagem[]) {
+        this.emitirPassagem(
+          runtime.modo,
+          evento,
+          this.amplitudeEquivalente(runtime.modo, 0, evento.qPonto),
+        )
+      }
       this.erros.delete(runtime.modo)
     } catch (erro) {
       this.runtimes.delete(runtime.modo)
@@ -239,40 +283,95 @@ export class RuntimeCena {
   }
 
   private estadoFormula(runtime: RuntimePendulo): EstadoPenduloCena {
-    const L = this.store.numero('L')
-    const g = this.store.numero('g')
-    const alpha = grausParaRad(deg(this.store.numero('alpha')))
-    const thetaInicial = grausParaRad(deg(this.store.numero('theta0')))
-    const omegaInicial = this.store.numero('omega0')
     if (runtime.modo === 'cicloidal' && this.store.numero('amplitudeForcamento') !== 0) {
       throw new Error('Forçamento externo no cicloidal requer a fonte de movimento por integração numérica.')
     }
-    const T = periodoExato(metro(L), mPorS2(g), alpha, runtime.modo)
-    const omega = (2 * Math.PI) / T
-    const fase = omega * this.tempoFormula
+    const { q, qPonto, qDoisPontos } = this.estadoHarmonico(runtime, this.tempoFormula)
     let theta: number
-    let q: number
-    let qPonto: number
-    let qDoisPontos: number
     if (runtime.modo === 'cicloidal') {
-      const q0 = Math.sin(thetaInicial)
-      const qPonto0 = Math.cos(thetaInicial) * omegaInicial
-      q = q0 * Math.cos(fase) + (qPonto0 / omega) * Math.sin(fase)
       if (Math.abs(q) > 1 + 1e-12) {
         throw new Error('Estado cicloidal inválido: |q| excedeu 1; reduza θ₀ ou ω₀.')
       }
       theta = Math.asin(Math.max(-1, Math.min(1, q)))
-      qPonto = -q0 * omega * Math.sin(fase) + qPonto0 * Math.cos(fase)
-      qDoisPontos = -omega * omega * q
     } else {
-      theta = thetaInicial * Math.cos(fase) + (omegaInicial / omega) * Math.sin(fase)
-      q = theta
-      qPonto = -thetaInicial * omega * Math.sin(fase) + omegaInicial * Math.cos(fase)
-      qDoisPontos = -omega * omega * theta
+      theta = q
     }
-    if (runtime.qFormulaAnterior !== null && runtime.qFormulaAnterior * q < 0) runtime.ultimoDisparo = this.tempoFormula
-    runtime.qFormulaAnterior = q
     return this.montarEstado(runtime, theta, qPonto, qDoisPontos, this.tempoFormula)
+  }
+
+  private estadoHarmonico(runtime: RuntimePendulo, tempo: number): {
+    readonly q: number
+    readonly qPonto: number
+    readonly qDoisPontos: number
+  } {
+    const thetaInicial = grausParaRad(deg(this.store.numero('theta0')))
+    const omegaInicial = this.store.numero('omega0')
+    const omega = (2 * Math.PI) / runtime.periodo
+    const fase = omega * tempo
+    const q0 = runtime.modo === 'cicloidal' ? Math.sin(thetaInicial) : thetaInicial
+    const qPonto0 = runtime.modo === 'cicloidal'
+      ? Math.cos(thetaInicial) * omegaInicial
+      : omegaInicial
+    const q = q0 * Math.cos(fase) + (qPonto0 / omega) * Math.sin(fase)
+    const qPonto = -q0 * omega * Math.sin(fase) + qPonto0 * Math.cos(fase)
+    return { q, qPonto, qDoisPontos: -omega * omega * q }
+  }
+
+  /** Enumera analiticamente todas as raízes no intervalo, mesmo num quadro lento. */
+  private emitirTravessiasFormula(runtime: RuntimePendulo, inicio: number, fim: number): void {
+    if (!(fim > inicio)) return
+    const thetaInicial = grausParaRad(deg(this.store.numero('theta0')))
+    const omegaInicial = this.store.numero('omega0')
+    const omega = (2 * Math.PI) / runtime.periodo
+    const a = runtime.modo === 'cicloidal' ? Math.sin(thetaInicial) : thetaInicial
+    const qPonto0 = runtime.modo === 'cicloidal'
+      ? Math.cos(thetaInicial) * omegaInicial
+      : omegaInicial
+    const b = qPonto0 / omega
+    if (Math.hypot(a, b) <= Number.EPSILON) return
+
+    // q(t) = R cos(ωt − φ); raízes em φ + π/2 + kπ.
+    const phi = Math.atan2(b, a)
+    const base = phi + Math.PI / 2
+    let k = Math.floor((omega * inicio - base) / Math.PI) + 1
+    const tolerancia = 1e-12
+    while (true) {
+      const t = (base + k * Math.PI) / omega
+      if (t > fim + tolerancia) break
+      if (t > inicio + tolerancia && t >= 0) {
+        const fase = omega * t
+        const qPonto = -a * omega * Math.sin(fase) + qPonto0 * Math.cos(fase)
+        const evento: EventoPassagem = {
+          t: segundo(t),
+          sentido: qPonto >= 0 ? 1 : -1,
+          qPonto,
+          numeroTravessia: runtime.travessiasFormula,
+        }
+        runtime.travessiasFormula += 1
+        runtime.ultimoDisparo = t
+        this.emitirPassagem(
+          runtime.modo,
+          evento,
+          this.amplitudeEquivalente(runtime.modo, 0, qPonto),
+        )
+      }
+      k += 1
+    }
+  }
+
+  private amplitudeEquivalente(modo: ModoPendulo, q: number, qPonto: number): Rad {
+    const L = this.store.numero('L')
+    const g = this.store.numero('g')
+    if (modo === 'cicloidal') {
+      const sin2 = q * q + (L * qPonto * qPonto) / g
+      return Math.asin(Math.sqrt(Math.min(1, Math.max(0, sin2)))) as Rad
+    }
+    const cosAlpha = Math.cos(q) - (L * qPonto * qPonto) / (2 * g)
+    return Math.acos(Math.min(1, Math.max(-1, cosAlpha))) as Rad
+  }
+
+  private emitirPassagem(modo: ModoPendulo, evento: EventoPassagem, alpha: Rad): void {
+    for (const ouvinte of this.ouvintesPassagem) ouvinte({ modo, evento, alpha })
   }
 
   private estadoIntegrado(runtime: RuntimePendulo): EstadoPenduloCena {

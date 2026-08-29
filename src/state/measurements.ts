@@ -7,8 +7,19 @@
 
 import { estatisticas } from '../physics/analysis.js'
 import { compararInferencias } from '../physics/inference.js'
+import { periodoExato, periodoSerie } from '../physics/period.js'
+import { periodoDeEventos, type EventoPassagem } from '../physics/sensor.js'
 import type { ModoPendulo } from '../physics/types.js'
-import { metro, segundo, type Metro, type Rad, type Segundo } from '../physics/units.js'
+import {
+  deg,
+  grausParaRad,
+  metro,
+  mPorS2,
+  segundo,
+  type Metro,
+  type Rad,
+  type Segundo,
+} from '../physics/units.js'
 
 export type GrandezaMedida = 'meioPeriodo' | 'periodoCompleto'
 export type OrigemMedicao = 'automatica' | 'manual'
@@ -63,8 +74,19 @@ export interface ResumoEstatistico {
 
 export const LIMITE_LINHAS = 10_000
 
+interface LeitorColeta {
+  numero(id: string): number
+  texto(id: string): string
+}
+
+/** Porta de escrita do estado para a coleta; implementada pelo Store. */
+export interface EstadoMedicoes extends LeitorColeta {
+  registrarMedicao(entrada: EntradaMedicao): Medicao
+}
+
 export class ColecaoMedicoes {
   private readonly linhas: Medicao[] = []
+  private readonly ouvintes = new Set<() => void>()
   private proximoNumero = 1
 
   /**
@@ -75,7 +97,7 @@ export class ColecaoMedicoes {
    * duas grandezas é o erro mais comum ao reproduzir o experimento.
    */
   registrar(entrada: EntradaMedicao): Medicao {
-    if (!(entrada.T > 0)) {
+    if (!Number.isFinite(entrada.T) || !(entrada.T > 0)) {
       throw new Error(`Período medido deve ser positivo; recebeu ${entrada.T}.`)
     }
 
@@ -113,11 +135,14 @@ export class ColecaoMedicoes {
     this.proximoNumero += 1
     this.linhas.push(medicao)
     if (this.linhas.length > LIMITE_LINHAS) this.linhas.shift()
+    this.notificar()
     return medicao
   }
 
   get todas(): readonly Medicao[] {
-    return this.linhas
+    // Quem consome a coleção recebe uma fotografia, não o array mutável que
+    // sustenta a numeração, as estatísticas e as duas apresentações (RF-150).
+    return [...this.linhas]
   }
 
   get contagem(): number {
@@ -129,6 +154,7 @@ export class ColecaoMedicoes {
     const indice = this.linhas.findIndex((m) => m.n === n)
     if (indice < 0) return false
     this.linhas.splice(indice, 1)
+    this.notificar()
     return true
   }
 
@@ -136,6 +162,7 @@ export class ColecaoMedicoes {
   limpar(): void {
     this.linhas.length = 0
     this.proximoNumero = 1
+    this.notificar()
   }
 
   /** Ordena para exibição, sem alterar a ordem de inserção. */
@@ -149,8 +176,35 @@ export class ColecaoMedicoes {
     })
   }
 
+  /**
+   * Recorta uma página para a interface sem materializar milhares de linhas.
+   * A ordem cronológica, usada durante a coleta, evita inclusive a ordenação
+   * completa: custo proporcional apenas ao número de linhas visíveis.
+   */
+  paginaOrdenada(
+    coluna: keyof Medicao,
+    direcao: 'asc' | 'desc',
+    inicio: number,
+    limite: number,
+  ): readonly Medicao[] {
+    const primeiro = Math.max(0, Math.trunc(inicio))
+    const quantidade = Math.max(0, Math.trunc(limite))
+    if (quantidade === 0 || primeiro >= this.linhas.length) return []
+    if (coluna === 'n') {
+      if (direcao === 'asc') return this.linhas.slice(primeiro, primeiro + quantidade)
+      const fimOriginal = this.linhas.length - primeiro
+      const inicioOriginal = Math.max(0, fimOriginal - quantidade)
+      return this.linhas.slice(inicioOriginal, fimOriginal).reverse()
+    }
+    return this.ordenadas(coluna, direcao).slice(primeiro, primeiro + quantidade)
+  }
+
   estatisticasDe(coluna: 'T' | 'gInferido' | 'gInferidoIngenuo'): ResumoEstatistico {
-    return estatisticas(this.linhas.map((m) => m[coluna]))
+    // Linhas de meio período e período completo podem coexistir. Para T, a
+    // estatística usa uma grandeza homogênea: período completo normalizado.
+    return estatisticas(this.linhas.map((m) => coluna === 'T'
+      ? (m.grandeza === 'meioPeriodo' ? m.T * 2 : m.T)
+      : m[coluna]))
   }
 
   /** Só as linhas de um pêndulo — útil na visualização lado a lado (RF-139). */
@@ -160,9 +214,140 @@ export class ColecaoMedicoes {
 
   /** Restaura de um preset ou arquivo importado. */
   carregar(linhas: readonly Medicao[]): void {
-    this.limpar()
-    for (const linha of linhas) this.linhas.push(linha)
+    // A origem pode ser uma visão da própria coleção. Copiá-la antes de
+    // limpar torna `carregar(colecao.todas)` seguro mesmo se o seletor mudar.
+    const restauradas = linhas.slice(-LIMITE_LINHAS)
+    this.linhas.length = 0
+    // Presets e importações também respeitam o teto de memória. Mantemos as
+    // linhas mais recentes, que são as relevantes para continuar o caderno.
+    for (const linha of restauradas) this.linhas.push(linha)
     this.proximoNumero = this.linhas.reduce((maior, m) => Math.max(maior, m.n), 0) + 1
+    this.notificar()
+  }
+
+  /**
+   * Observa a coleção única, independentemente da apresentação que a alterou.
+   * Assim tabela e caderno nunca mantêm cópias divergentes (RF-150).
+   */
+  assinar(ouvinte: () => void): () => void {
+    this.ouvintes.add(ouvinte)
+    return () => this.ouvintes.delete(ouvinte)
+  }
+
+  private notificar(): void {
+    for (const ouvinte of this.ouvintes) ouvinte()
+  }
+}
+
+/**
+ * Ação de estado que transforma disparos do sensor em linhas da coleção.
+ * A UI só encaminha eventos e comandos; fórmulas e unidades ficam fora dela.
+ */
+export class ColetorTabela {
+  private readonly historicos = new Map<ModoPendulo, EventoPassagem[]>()
+  private readonly sentidoAutomatico = new Map<ModoPendulo, -1 | 1>()
+  private coletaAtiva = false
+
+  constructor(
+    private readonly estado: EstadoMedicoes,
+  ) {}
+
+  get automaticaAtiva(): boolean {
+    return this.coletaAtiva
+  }
+
+  definirColeta(ativa: boolean): void {
+    if (ativa === this.coletaAtiva) return
+    this.coletaAtiva = ativa
+    // Nunca una passagens separadas por uma pausa da coleta. Tanto pausar
+    // quanto retomar abre uma nova janela experimental.
+    this.reiniciarSensor()
+  }
+
+  reiniciarSensor(): void {
+    this.historicos.clear()
+    this.sentidoAutomatico.clear()
+  }
+
+  registrarPassagem(modo: ModoPendulo, evento: EventoPassagem, alpha: Rad): Medicao | null {
+    // Coleta pausada não observa o sensor em segundo plano. Assim, retomar
+    // nunca fecha um ciclo iniciado antes da pausa, nem faz o histórico crescer.
+    if (!this.coletaAtiva) return null
+    const eventos = this.historicos.get(modo) ?? []
+    const anterior = eventos.at(-1)
+    if (!Number.isFinite(evento.t) || evento.t < 0 || (anterior !== undefined && evento.t <= anterior.t)) {
+      // Um relógio reiniciado ou um evento fora de ordem delimita uma nova
+      // série. Semeia o histórico sem produzir período negativo ou enorme.
+      this.historicos.set(modo, Number.isFinite(evento.t) && evento.t >= 0 ? [evento] : [])
+      this.sentidoAutomatico.delete(modo)
+      if (Number.isFinite(evento.t) && evento.t >= 0) this.sentidoAutomatico.set(modo, evento.sentido)
+      return null
+    }
+    eventos.push(evento)
+    // Três travessias alternadas são suficientes para período completo; duas,
+    // para meio período. O histórico de coleta não cresce com a execução.
+    if (eventos.length > 3) eventos.splice(0, eventos.length - 3)
+    this.historicos.set(modo, eventos)
+    if (!this.sentidoAutomatico.has(modo)) this.sentidoAutomatico.set(modo, evento.sentido)
+    if (evento.sentido !== this.sentidoAutomatico.get(modo)) return null
+
+    // Uma direção é a âncora do ciclo. Sem isso, as duas direções gerariam
+    // janelas sobrepostas e duas linhas para uma única oscilação completa.
+    const periodoCompleto = periodoDeEventos(eventos, 'periodoCompleto')
+    if (periodoCompleto === null) return null
+    const grandeza = this.grandeza
+    const T = grandeza === 'meioPeriodo'
+      ? periodoDeEventos(eventos, 'meioPeriodo')
+      : periodoCompleto
+    if (T === null) return null
+    return this.registrar(modo, T, 'automatica', evento.t, alpha)
+  }
+
+  coletarManual(modo: ModoPendulo, tColeta: number, alphaAtual?: Rad): Medicao {
+    const eventos = this.historicos.get(modo) ?? []
+    const observada = periodoDeEventos(eventos, this.grandeza)
+    const alpha = alphaAtual ?? grausParaRad(deg(this.estado.numero('alpha')))
+    const exata = periodoExato(
+      metro(this.estado.numero('L')),
+      mPorS2(this.estado.numero('g')),
+      alpha,
+      modo,
+    )
+    const imediata = this.grandeza === 'meioPeriodo' ? exata / 2 : exata
+    return this.registrar(modo, observada ?? imediata, 'manual', tColeta, alpha)
+  }
+
+  private get grandeza(): GrandezaMedida {
+    return this.estado.texto('modoContagem') as GrandezaMedida
+  }
+
+  private registrar(
+    modo: ModoPendulo,
+    T: number,
+    origem: OrigemMedicao,
+    tColeta: number,
+    alphaAtual?: Rad,
+  ): Medicao {
+    const alpha = alphaAtual ?? grausParaRad(deg(this.estado.numero('alpha')))
+    const L = metro(this.estado.numero('L'))
+    const g = mPorS2(this.estado.numero('g'))
+    const N = this.estado.numero('N')
+    const Tteorico = periodoSerie(L, g, alpha, N, modo)
+    return this.estado.registrarMedicao({
+      ...entradaDeMedicao(
+        modo,
+        modo,
+        T,
+        this.grandeza,
+        alpha,
+        L,
+        g,
+        N,
+        Tteorico,
+        tColeta,
+      ),
+      origem,
+    })
   }
 }
 

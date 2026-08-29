@@ -19,6 +19,7 @@ import { criarSeletorVisualizacao } from './ui/view-selector.js'
 import { criarPainelParametros } from './ui/panels/parametros.js'
 import { criarConsoleParametros } from './ui/param-console.js'
 import { criarPainelFormula } from './ui/formula.js'
+import { criarTabelaColeta } from './ui/data-table.js'
 
 ;(globalThis as typeof globalThis & { katex: KatexGlobal }).katex = katexRuntime
 
@@ -115,6 +116,7 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const cabecalho = document.querySelector<HTMLElement>('#cabecalho')
   const recipienteSeletor = document.querySelector<HTMLElement>('#seletor-visualizacao')
   const recipienteFormula = document.querySelector<HTMLElement>('#formula')
+  const recipienteTabela = document.querySelector<HTMLElement>('#tabela-coleta')
   const recipienteParametros = document.querySelector<HTMLElement>('#painel-parametros')
   if (cabecalho !== null) {
     cabecalho.hidden = false
@@ -143,6 +145,9 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   }
   const seletor = recipienteSeletor === null ? null : criarSeletorVisualizacao(recipienteSeletor, store, anunciar)
   const formula = recipienteFormula === null ? null : criarPainelFormula(recipienteFormula, store)
+  const tabela = recipienteTabela === null
+    ? null
+    : criarTabelaColeta(recipienteTabela, store, runtime, { anunciar })
   const painel = recipienteParametros === null ? null : criarPainelParametros(recipienteParametros, store, anunciar)
   const consoleParametros = recipienteParametros === null ? null : criarConsoleParametros(recipienteParametros, store, anunciar)
 
@@ -208,7 +213,7 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     if (acao === 'reproduzir') aplicarComando('reproduzir')
     else if (acao === 'pausar') aplicarComando('pausar')
     else if (acao === 'parar') aplicarComando('parar')
-    else if (acao === 'zerar') { runtime.zerar(); solicitarRender() }
+    else if (acao === 'zerar') { runtime.zerar(); tabela?.reiniciarSensor(); solicitarRender() }
     else if (acao === 'passo') { runtime.passo(); solicitarRender() }
   }
   secaoCena.addEventListener('click', aoClicarControle)
@@ -223,16 +228,19 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     solicitarRender()
   })
   const aoMudarVisibilidade = (): void => {
+    tabela?.reiniciarSensor()
     if (document.visibilityState === 'hidden') agendador.suspender()
     else { ultimoQuadro = performance.now(); camadas.redimensionar(); agendador.retomar() }
   }
   const aoOcultarPagina = (evento: PageTransitionEvent): void => {
+    tabela?.reiniciarSensor()
     agendador.suspender()
     if (evento.persisted) return
     destruir()
   }
   const aoMostrarPagina = (evento: PageTransitionEvent): void => {
     if (!evento.persisted || destruida) return
+    tabela?.reiniciarSensor()
     ultimoQuadro = performance.now()
     camadas.redimensionar()
     agendador.retomar()
@@ -245,6 +253,7 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     runtime.destruir()
     seletor?.destruir()
     formula?.destruir()
+    tabela?.destruir()
     consoleParametros?.destruir()
     painel?.destruir()
     secaoCena.removeEventListener('click', aoClicarControle)

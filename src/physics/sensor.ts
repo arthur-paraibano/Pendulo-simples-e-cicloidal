@@ -41,6 +41,9 @@ export interface EventoPassagem {
   readonly numeroTravessia: number
 }
 
+/** Duas passagens do mesmo sentido, com a intermediária, bastam para T. */
+export const MAX_EVENTOS_SENSOR = 3
+
 /**
  * Detecta a passagem por `q = 0` entre dois passos consecutivos e interpola o
  * instante:
@@ -120,6 +123,9 @@ export class SensorZero {
     const evento: EventoPassagem = { ...bruto, numeroTravessia: this.contador }
     this.contador += 1
     this.eventos.push(evento)
+    if (this.eventos.length > MAX_EVENTOS_SENSOR) {
+      this.eventos.splice(0, this.eventos.length - MAX_EVENTOS_SENSOR)
+    }
     return evento
   }
 

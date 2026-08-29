@@ -10,6 +10,16 @@
 import type { ValorParametro } from './tipos.js'
 import { encontrarParametro, PARAMETROS, POR_ID, valoresPadrao } from './schema.js'
 import type { DefinicaoParametro, LeitorDeValores } from './tipos.js'
+import {
+  ColetorTabela,
+  ColecaoMedicoes,
+  type EntradaMedicao,
+  type Medicao,
+  type ResumoEstatistico,
+} from './measurements.js'
+import type { EventoPassagem } from '../physics/sensor.js'
+import type { ModoPendulo } from '../physics/types.js'
+import type { Rad } from '../physics/units.js'
 
 export type OrigemValor = 'padrao' | 'usuario' | 'preset' | 'url' | 'roteiro' | 'limitado'
 
@@ -52,6 +62,8 @@ export class Store {
   private derivadasPendentes = new Set<string>()
   private notificando = false
   private agrupando = 0
+  private readonly colecaoMedicoes = new ColecaoMedicoes()
+  private readonly coletorTabela = new ColetorTabela(this)
 
   constructor(iniciais: Readonly<Record<string, ValorParametro>> = {}) {
     this.valores = valoresPadrao()
@@ -180,6 +192,79 @@ export class Store {
         this.definirParametro(p.id, p.padrao, 'padrao')
       }
     })
+  }
+
+  // ── Medições ─────────────────────────────────────────────────────────────
+
+  /** Seletor da coleção única usada pela tabela e pelo caderno. */
+  selecionarMedicoes(): readonly Medicao[] {
+    return this.colecaoMedicoes.todas
+  }
+
+  ordenarMedicoes(coluna: keyof Medicao, direcao: 'asc' | 'desc' = 'asc'): readonly Medicao[] {
+    return this.colecaoMedicoes.ordenadas(coluna, direcao)
+  }
+
+  paginarMedicoes(
+    coluna: keyof Medicao,
+    direcao: 'asc' | 'desc',
+    inicio: number,
+    limite: number,
+  ): readonly Medicao[] {
+    return this.colecaoMedicoes.paginaOrdenada(coluna, direcao, inicio, limite)
+  }
+
+  contagemMedicoes(): number {
+    return this.colecaoMedicoes.contagem
+  }
+
+  estatisticasMedicoes(coluna: 'T' | 'gInferido' | 'gInferidoIngenuo'): ResumoEstatistico {
+    return this.colecaoMedicoes.estatisticasDe(coluna)
+  }
+
+  /** Seletor do estado da coleta automática, sem expor o coletor à interface. */
+  selecionarColetaAutomatica(): boolean {
+    return this.coletorTabela.automaticaAtiva
+  }
+
+  registrarMedicao(entrada: EntradaMedicao): Medicao {
+    return this.colecaoMedicoes.registrar(entrada)
+  }
+
+  definirColetaAutomatica(ativa: boolean): void {
+    this.coletorTabela.definirColeta(ativa)
+  }
+
+  registrarPassagemSensor(
+    modo: ModoPendulo,
+    evento: EventoPassagem,
+    alpha: Rad,
+  ): Medicao | null {
+    return this.coletorTabela.registrarPassagem(modo, evento, alpha)
+  }
+
+  coletarMedicaoManual(modo: ModoPendulo, tColeta: number, alphaAtual?: Rad): Medicao {
+    return this.coletorTabela.coletarManual(modo, tColeta, alphaAtual)
+  }
+
+  reiniciarSensorColeta(): void {
+    this.coletorTabela.reiniciarSensor()
+  }
+
+  removerMedicao(n: number): boolean {
+    return this.colecaoMedicoes.remover(n)
+  }
+
+  limparTabela(): void {
+    this.colecaoMedicoes.limpar()
+  }
+
+  carregarMedicoes(linhas: readonly Medicao[]): void {
+    this.colecaoMedicoes.carregar(linhas)
+  }
+
+  assinarMedicoes(ouvinte: () => void): () => void {
+    return this.colecaoMedicoes.assinar(ouvinte)
   }
 
   /**
