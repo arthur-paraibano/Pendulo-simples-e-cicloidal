@@ -29,10 +29,11 @@ https://<host>/<caminho>#v=1&modo=simples&vis=ambos&L=1&alpha=10&g=9.81&N=2
 | Chaves | O `id` do esquema, sem abreviação. `alpha`, não `a` |
 | Decimal | **Ponto**, nunca vírgula, independentemente do idioma da interface |
 | Ângulos | Sempre em **graus**, independentemente da unidade de exibição escolhida |
-| Precisão | `precisao` do esquema; zeros à direita removidos (`1.000` ⇒ `1`) |
+| Precisão | **Exata**: a forma mais curta que reconstrói o mesmo número (`1.000` ⇒ `1`). Truncar às casas de exibição degradaria o estado ao compartilhá-lo |
 | Booleanos | `1` e `0` |
 | Múltipla escolha | Valores separados por vírgula: `mod=T0,serie,exato` |
 | Derivados | **Nunca** aparecem |
+| Espelhos | **Nunca** aparecem: `α` e `h` são reconstruídos a partir de `θ₀`, o canônico da largada. Incluí-los tornaria o resultado dependente da ordem de aplicação (RF-166) |
 | Determinismo | O mesmo estado gera **sempre** o mesmo endereço, caractere a caractere |
 | Limite | Acima de 2000 caracteres, comprime tudo (menos `v`) em `z=<base64url>` |
 

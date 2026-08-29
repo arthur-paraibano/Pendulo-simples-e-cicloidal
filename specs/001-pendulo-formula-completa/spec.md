@@ -816,8 +816,8 @@ leituras e a notação matemática acompanham a escolha.
 | ID | Símbolo | Nome | Unidade | Faixa | Padrão | Passo | Nível |
 |---|---|---|---|---|---|---|---|
 | P01 | `L` | Comprimento do fio | m | 0,05 – 10 | 1,000 | 0,001 | Básico |
-| P02 | `α` | Amplitude angular inicial | ° (ou rad) | 0,1 – 179,9 (cicloidal: 0,1 – 90) | 10,0 | 0,1 | Básico |
-| P03 | `θ₀` | Ângulo inicial com sinal | ° | −179,9 – +179,9 | +10,0 | 0,1 | Básico |
+| P02 | `α` | Amplitude angular inicial | ° (ou rad) | 0 – 179,9 (cicloidal: 0 – 90) · **espelho de θ₀** | 10,0 | 0,1 | Básico |
+| P03 | `θ₀` | Ângulo inicial com sinal | ° | −179,9 – +179,9 · **canônico da largada** | +10,0 | 0,1 | Básico |
 | P04 | `ω₀` | Velocidade angular inicial | rad/s | −20 – +20 | 0 | 0,01 | Avançado |
 | P05 | `m` | Massa da esfera | kg | 0,01 – 10 | 1,000 | 0,01 | Básico |
 | P06 | `R_b` | Raio da esfera | m | 0 – L/4 | 0 | 0,001 | Avançado |
@@ -834,7 +834,7 @@ leituras e a notação matemática acompanham a escolha.
 | P12 | `VINC` | Vínculo `L = 4r` | booleano | travado · destravado | travado | — | Básico |
 | P13 | `φ` | Fase paramétrica da cicloide | rad | 0 – 2π | — | 0,01 | Avançado |
 | P14 | `s₀` | Deslocamento inicial ao longo do arco | m | 0 – L | 0,5 | 0,01 | Básico |
-| P15 | `h₀` | Altura inicial de largada | m | 0 – 2r | — | 0,001 | Avançado |
+| P15 | `h₀` | Altura inicial de largada | m | 0 – 2r · **espelho de θ₀** | — | 0,001 | Avançado |
 | P16 | `ARC` | Abertura angular do arco desenhado | ° | 0 – 360 | 360 | 1 | Avançado |
 | P17 | `e_f` | Espessura das faces cicloidais | mm | 0 – 20 | 2,0 | 0,5 | Avançado |
 | P18 | `n_m` | Massas na demonstração de tautocronia | — | 1 – 8 | 2 | 1 | Básico |
@@ -1262,15 +1262,65 @@ leituras e a notação matemática acompanham a escolha.
 - **RF-157**: O sistema DEVE expor a **altura de largada `hᵢ`** como parâmetro de primeiro nível de
   cada massa, ao lado da amplitude angular, permitindo definir a posição inicial pela altura em vez
   do ângulo — que é como o experimento é conduzido na bancada e como a tautocronia é demonstrada.
-- **RF-158**: `hᵢ` e `αᵢ` DEVEM ser mutuamente determinados, com o último editado atuando como lado
-  mestre. No modo cicloidal a relação é `h = L·sen²(θ)/2`, equivalente a `h = s²/(2L)` com
-  `s = L·sen θ`, cujo máximo é `h = L/2 = 2r` no topo da face cicloidal. No modo simples a relação
-  é `h = L·(1 − cos α)`.
+- **RF-158**: `hᵢ` e `αᵢ` DEVEM ser mutuamente determinados. No modo cicloidal a relação é
+  `h = L·sen²(θ)/2`, equivalente a `h = s²/(2L)` com `s = L·sen θ`, cujo máximo é `h = L/2 = 2r` no
+  topo da face cicloidal. No modo simples a relação é `h = L·(1 − cos α)`. A resolução do vínculo
+  segue a Área M: `θ₀` é o canônico, e `h` e `α` são espelhos recalculados a partir dele.
 - **RF-159**: Na demonstração de tautocronia, cada uma das massas DEVE ter sua própria altura de
   largada `h₁`, `h₂`, … editável numericamente, e o sistema DEVE evidenciar que, apesar das alturas
   diferentes, todas alcançam o ponto zero no mesmo instante.
 - **RF-160**: O sistema DEVE recusar altura de largada acima do máximo geométrico admissível,
   limitando ao topo da face cicloidal e comunicando o ajuste.
+
+#### Área M — Coerência da posição de largada
+
+> **Origem**: defeito observado na aplicação em execução. Com `α = 45°` e
+> `θ₀ = 10°`, o painel da fórmula anunciava `T = 2,085562 s` enquanto a tabela de
+> coleta media `T = 2,0099 s` para o mesmo pêndulo. A fórmula descrevia um
+> movimento diferente do que estava sendo simulado.
+>
+> A causa é que três parâmetros descrevem **um único fato físico** — de onde a
+> massa é solta — e o estado permitia que discordassem entre si. Esta área
+> elimina a possibilidade.
+
+**O trio e o parâmetro canônico**
+
+- **RF-161**: `θ₀` (P03), `α` (P02) e `h` (P15) DEVEM descrever sempre a mesma
+  posição de largada. O sistema NÃO DEVE admitir estado em que discordem.
+- **RF-162**: `θ₀` é o parâmetro **canônico** do trio, por ser o único que carrega
+  a informação completa: magnitude **e** lado de onde a massa é solta. `α` e `h`
+  são **espelhos**, sempre recalculados a partir dele.
+- **RF-163**: Os três DEVEM permanecer **editáveis**. Editar um espelho escreve no
+  canônico e recalcula os demais — o que preserva o RF-157, que exige poder
+  definir a largada pela altura, como se faz na bancada.
+- **RF-164**: Editar `α` NÃO DEVE trocar o lado de largada: o sinal corrente de
+  `θ₀` é preservado. Jogar a massa para o outro lado exige pedir isso
+  explicitamente, editando `θ₀`.
+- **RF-165**: Os espelhos DEVEM ser recalculados a partir do valor **armazenado**
+  do canônico, nunca guardados a partir do que foi digitado neles. Sem isso o
+  estado manteria um `h` que não corresponde ao `α` exibido, e a incoerência
+  voltaria pela porta dos fundos — apenas menor. O armazenamento guarda precisão
+  plena: `precisao` governa a apresentação, e é o que permite o passo fino mexer
+  em `α` por 0,01 com uma casa em tela.
+
+**Consequência para o estado compartilhável**
+
+- **RF-166**: Parâmetros espelho NÃO DEVEM ser incluídos no endereço
+  compartilhável nem nos presets. O endereço DEVE carregar o valor **exato** do
+  canônico, e não o arredondado para as casas de exibição: truncar degradaria o
+  estado ao compartilhá-lo, devolvendo um pêndulo diferente do original. Incluí-los tornaria o resultado dependente da
+  ordem de aplicação, violando o determinismo exigido pelo Princípio V: aplicar
+  `α` e depois `θ₀` produziria estado diferente de aplicar `θ₀` e depois `α`.
+- **RF-167**: Restaurar um endereço DEVE reconstruir os espelhos a partir do
+  canônico, e o estado resultante DEVE ser idêntico ao original — inclusive nos
+  valores dos espelhos.
+
+**Correção de faixa decorrente**
+
+- **RF-168**: A faixa de `α` DEVE admitir **zero**. A faixa anterior começava em
+  `0,1°`, o que contradizia o caso de borda já especificado — `α = 0` significa
+  repouso, com `T = T₀` e sensor sem disparo — e impedia o estado coerente
+  correspondente a `θ₀ = 0`.
 
 ### Requisitos Não Funcionais
 
@@ -1535,6 +1585,6 @@ leituras e a notação matemática acompanham a escolha.
 - [x] Conceitos-chave extraídos
 - [x] Ambiguidades marcadas (2 marcadores, dentro do limite)
 - [x] Cenários de usuário definidos (16 histórias priorizadas)
-- [x] Requisitos gerados (160 funcionais, 23 não funcionais)
+- [x] Requisitos gerados (168 funcionais, 23 não funcionais)
 - [x] Entidades identificadas (14 entidades conceituais)
 - [ ] Checklist de revisão aprovada — pendente da resolução dos 2 esclarecimentos
