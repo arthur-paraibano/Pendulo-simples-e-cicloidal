@@ -274,7 +274,28 @@ com três gráficos ativos, depende de T097 e do gate de desempenho T121.
 
 ---
 
-## Fase 6 — Tabela de Coleta (T087–T096)
+## Fase 6 — Tabela de Coleta (T087–T096) ✅ CONCLUÍDA
+
+> Executada em 2026-08-25. Portão de saída verificado: **Cenário 6 do quickstart passando por
+> completo**, com **669 testes unitários** e **60/60 cenários de ponta a ponta em Chromium e
+> Firefox**. Cobertura por arquivo em 99,03 % de statements e 94,47 % de branches.
+>
+> A tabela reproduz os números de referência do cenário, incluindo o contraste que justifica a
+> coluna: a 45° no pêndulo simples, `g` inferido **9,8035** contra `g` ingênuo **9,0704**; no
+> cicloidal, as duas colunas coincidem em **9,8100** para qualquer amplitude.
+>
+> **Correção de rigor no quickstart**: o passo 6.8 passou a distinguir o período **medido pelo
+> sensor** (exato, `2,0863 s`) do período **teórico da série truncada** em `N = 2` (`2,0856 s`).
+> São grandezas diferentes e a tabela exibe as duas — confundi-las mascararia justamente o erro de
+> modelo que a fase existe para mostrar.
+>
+> **Defeito corrigido na validação**: um cenário exigia que a rolagem horizontal permanecesse em
+> 180 px depois de mover o foco para um botão fora da área visível. O Firefox rola para revelar o
+> elemento focado — comportamento nativo e correto de acessibilidade, que suprimir seria regressão.
+> A aplicação já preservava a rolagem no re-render (`preventScroll` na restauração de foco); a
+> premissa do teste é que estava errada. A rolagem de referência passou a ser estabelecida **depois**
+> do foco, medindo o que de fato importa.
+
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|

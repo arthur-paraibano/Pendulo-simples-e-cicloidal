@@ -117,3 +117,47 @@ Observations captured during task-oriented work.
 **Issue:** Measuring only the duration of the command handler proved internal write latency but missed the next animation frame and a slower downstream accessibility update. The reported sub-100 ms result therefore did not establish the product-level response promised to the user.
 **Suggested improvement:** For latency requirements, start timing at the user action and stop only after every named observable consumer has changed, including rendered values, scene state and accessible descriptions; assert the elapsed wall time in the browser.
 **Principle:** A latency budget belongs to the visible contract, not the fastest synchronous stage in its pipeline.
+
+### Observation 11: Measurement E2E tests must cross lifecycle boundaries
+**Status:** OPEN
+**Date:** 2026-08-25
+**Session context:** Independent certification of automatic period collection driven by a simulated zero-crossing sensor.
+**Skill:** New skill candidate: implementation-audit
+**Type:** open-source
+**Phase/Area:** Stateful measurement verification
+**Issue:** The browser suite passed nominal automatic collection while stale crossing history produced negative, oversized or spurious periods after stop, reset, pause and view changes. The happy path never crossed the lifecycle boundaries that invalidate a measurement session.
+**Suggested improvement:** Add a measurement-specific test matrix that starts collection before each lifecycle transition, verifies history invalidation, then asserts both the exact row count and the first post-transition value. Include frame gaps large enough to cross multiple sensor events.
+**Principle:** Stateful instruments must be certified across every transition that changes their clock, visibility or session boundary; nominal sampling alone cannot prove measurement integrity.
+
+### Observation 12: Event payloads must capture time-varying inference inputs
+**Status:** OPEN
+**Date:** 2026-08-25
+**Session context:** Correcting a measurement pipeline whose inference used an initial configuration value after the physical state had evolved.
+**Skill:** New skill candidate: scientific measurement pipeline audit
+**Type:** open-source
+**Phase/Area:** Event design and scientific correctness
+**Issue:** A timestamped event carried the measured interval but omitted a time-varying covariate needed by downstream inference, so consumers silently substituted a stale initial parameter.
+**Suggested improvement:** Audit every derived measurement by tracing all inference inputs back to the event instant; capture dynamic covariates in the event payload or a same-instant immutable snapshot, and test a regime where they evolve.
+**Principle:** If an inference input can change during a run, it belongs to the measurement event's temporal snapshot rather than a later read of configuration state.
+
+### Observation 13: Table E2E assertions should follow semantics instead of cell offsets
+**Status:** OPEN
+**Date:** 2026-08-25
+**Session context:** Completing a semantic measurement table after adding a contextual quantity column.
+**Skill:** New skill candidate: implementation-audit
+**Type:** open-source
+**Phase/Area:** End-to-end verification of data tables
+**Issue:** Adding one valid column shifted every later cell offset, leaving browser assertions aimed at the wrong quantities. Index-based checks made the test suite tightly coupled to presentation order and obscured the scientific meaning of failures.
+**Suggested improvement:** Give important cells stable semantic identifiers or derive their position from the associated header, reserving numeric offsets for an explicit column-order contract test.
+**Principle:** Data-table tests should identify values by their header relationship; presentation order deserves one dedicated assertion, not duplication across every value check.
+
+### Observation 14: Collection capacity and DOM capacity are separate contracts
+**Status:** OPEN
+**Date:** 2026-08-25
+**Session context:** Hardening a measurement table that retains ten thousand records while rerendering after every automatic sample.
+**Skill:** New skill candidate: implementation-audit
+**Type:** open-source
+**Phase/Area:** Front-end performance verification
+**Issue:** A correct in-memory retention limit was mistaken for a safe rendering limit, allowing each new sample to sort and recreate every cell in a large data table. Reducing the stored collection would have protected the DOM but violated later export and analysis requirements.
+**Suggested improvement:** Specify and test storage capacity, visible page size and full-dataset statistics independently; keep the full collection in state while bounding DOM rows, and verify navigation reaches retained records.
+**Principle:** Performance limits at the presentation boundary must not silently become data-loss policies in the domain model.

@@ -146,10 +146,10 @@ padrão (botão "Restaurar tudo"). Tolerância de leitura: as casas decimais exi
 | 6.5 | Ler a coluna `T` | `2,0099 s` (± 0,0002 s) |
 | 6.6 | Ler a coluna `g` | `9,8100 m/s²` (± 0,0005) |
 | 6.7 | Exibir a coluna de `g` ingênuo | **`9,7727 m/s²`** — erro de −0,38 % por ignorar os termos |
-| 6.8 | Mudar `α` para 45° e coletar | `T = 2,0856 s`; `g` inferido `9,8035`; `g` ingênuo **`9,0704`** (−7,54 %) |
+| 6.8 | Mudar `α` para 45° e coletar | Período exato medido `T = 2,0863 s`; `g` inferido `9,8035`; `g` ingênuo **`9,0704`** (−7,54 %). `2,0856 s` é a aproximação da série truncada em `N = 2`, exibida separadamente como `T` teórico |
 | 6.9 | Trocar para Cicloidal com `α = 45°` e coletar | `T = 2,0061 s`; `g = 9,8100`; **`g` ingênuo também `9,8100`** |
-| 6.10 | Ler o rodapé | Contagem, média, desvio padrão e erro padrão de `T` e de `g` |
-| 6.11 | Alternar o sensor para **meio período** | A coluna passa a `1,0049 s` com `α = 10°`, e o cabeçalho diz "meio período" |
+| 6.10 | Ler o rodapé | Contagem, média, desvio padrão e erro padrão de `T` completo normalizado e de `g` |
+| 6.11 | Alternar o sensor para **meio período** | A nova linha registra `1,0049 s` com `α = 10°` e a coluna **Grandeza** identifica “Meio período”; linhas anteriores mantêm o próprio rótulo |
 | 6.12 | Excluir uma linha | Estatísticas recalculadas |
 | 6.13 | Limpar a tabela | **Pede confirmação** antes de descartar |
 | 6.14 | Trocar de visualização | As linhas coletadas **permanecem** (RF-130) |
