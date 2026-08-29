@@ -8,6 +8,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "start": "node scripts/subir.mjs",
     "dev": "vite",
     "build": "npm run typecheck && vite build",
     "build:single": "npm run typecheck && vite build --config vite.config.singlefile.ts && node scripts/gerar-arquivo-unico.mjs",
@@ -24,7 +25,8 @@
     "test:cobertura": "vitest run --coverage",
     "tabelas": "node scripts/gerar-tabelas.mjs",
     "katex:enxugar": "node scripts/enxugar-katex.mjs",
-    "katex:verificar": "node scripts/enxugar-katex.mjs --verificar"
+    "katex:verificar": "node scripts/enxugar-katex.mjs --verificar",
+    "validar:visual": "node scripts/validar-visual.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
