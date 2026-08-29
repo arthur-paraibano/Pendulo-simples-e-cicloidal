@@ -99,16 +99,32 @@ necessária para este plano.
 - **Consequências**: é preciso gerenciar `devicePixelRatio` e `ResizeObserver` para as três camadas
   de forma coordenada — concentrado em `render/layers.ts`.
 
-### AD-03 — Gráficos híbridos: uPlot + `XYPlot` próprio
+### AD-03 — Um único renderizador de gráficos em canvas *(revista em 2026-08-25)*
 
-- **Decisão**: uPlot para séries temporais e curvas monotônicas (θ(t), ω(t), energia, T×α, erro,
-  convergência); renderizador próprio em canvas para retrato de fase e seção de Poincaré.
-- **Alternativas**: Chart.js para tudo; Plotly; D3; tudo próprio.
-- **Justificativa**: uPlot é pequeno (~45 KB) e rápido em streaming, mas é orientado a séries com
-  eixo x monotônico — o retrato de fase é uma trajetória paramétrica que o violaria. Escrever
-  ~200 linhas de `XYPlot` custa menos que forçar uma biblioteca fora do seu paradigma.
-- **Consequências**: dois estilos de gráfico para manter coerentes — resolvido por `render/charts/ticks.ts`
-  e pela paleta compartilhada em `render/palette.ts`.
+- **Decisão**: **um** renderizador próprio em canvas, `render/charts/xyplot.ts`, atende a todos os
+  gráficos. Sem uPlot, sem segunda biblioteca.
+- **Alternativas**: uPlot para as curvas monotônicas mais `XYPlot` para as paramétricas (a decisão
+  original); Chart.js para tudo; Plotly; D3.
+- **Justificativa**: a decisão original partia de que só o retrato de fase violaria a premissa de
+  eixo x monotônico do uPlot. Ao detalhar os requisitos da Área F, verificou-se que **três** dos
+  cinco pontos centrais a violam ou passam ao largo dela:
+  - **RF-079** (espaço de fase `θ × ω`) e **RF-085** (eixos escolhíveis, qualquer grandeza em
+    qualquer eixo) são curvas paramétricas;
+  - **RF-083** (leitura de valores no ponto apontado) e **RF-084** (marcadores do valor corrente
+    dos parâmetros) são sobreposições próprias em qualquer cenário.
+
+  O `XYPlot` teria de ser escrito de todo modo. Mantendo também o uPlot, o projeto pagaria uma
+  dependência vendorizada a mais, dois paradigmas visuais e o código de reconciliação entre eles —
+  para cobrir apenas parte dos gráficos. Um renderizador só reaproveita o que já existe e foi
+  validado nas Fases 4 e 5: `CamadasCanvas` com DPR, `ControladorPaleta` ligado aos temas,
+  `TransformacaoMundo` e o agendador de quadros.
+- **Consequências**: assume-se a implementação de escalas, marcas de eixo e leitura por cursor —
+  trabalho limitado e sob controle direto do orçamento de quadro. Em troca, um só vocabulário
+  visual, nenhuma dependência nova (Princípio VII) e nenhum código de reconciliação. A escala
+  logarítmica exigida pelo RF-082 fica no mesmo módulo de escalas das lineares.
+- **Registro**: emenda motivada por evidência levantada no início da Fase 7, antes de qualquer
+  implementação. A decisão original não estava errada quando foi tomada — estava baseada em um
+  levantamento de requisitos menos detalhado.
 
 ### AD-04 — KaTeX com destaque termo-a-termo
 
