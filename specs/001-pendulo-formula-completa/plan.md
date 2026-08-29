@@ -442,7 +442,7 @@ Fixtures principais (extraídas de [research.md](./research.md)):
 | Perda de 60 fps ao ligar rastro e gráficos juntos | Alto | Camadas separadas, gráficos a 20 Hz, teste de desempenho automatizado no CI |
 | Geometria cicloidal desenhada de forma plausível mas incorreta | Alto | Teste de propriedade: comprimento de arco do trecho enrolado + trecho livre = `L` constante, para todo θ |
 | Confusão entre meio período e período completo nas medições | Médio | Grandeza sempre rotulada na interface e na coluna do CSV; teste E2E cobrindo os dois modos |
-| Arquivo único estourar o orçamento de tamanho | Médio | Subset das fontes KaTeX; medição de tamanho no CI com limite que quebra o build |
+| Arquivo único estourar o orçamento de tamanho | Médio | **Mitigado em 2026-08-25**, antes da Fase 7: entregam-se 6 das 20 fontes do KaTeX, medidas no navegador em vez de supostas. Pages caiu de 375,5 kB para **181,7 kB** (45 % do limite) e o arquivo único de 754,1 kB para **494,5 kB**. `scripts/enxugar-katex.mjs` gera o CSS derivado, `tests/e2e/fontes.spec.ts` reprova corte excessivo ou peso morto, e a medição de tamanho no CI segue quebrando o build |
 | Deriva de rad × grau entre camadas | Médio | Tipos nominais em `physics/units.ts`; internamente tudo em radianos, conversão só na borda da UI |
 
 ---

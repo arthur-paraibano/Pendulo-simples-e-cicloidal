@@ -3,7 +3,7 @@
 import './styles/tokens.css'
 import './styles/scene.css'
 import './styles/ui.css'
-import '../vendor/katex/katex.min.css'
+import '../vendor/katex/katex.subset.css'
 // O build UMD oficial é importado como CommonJS pelo Vite e também exposto
 // para diagnóstico/versionamento no navegador.
 import katexRuntime from '../vendor/katex/katex.min.js'

@@ -19,10 +19,12 @@
     "test:e2e": "playwright test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "verificar": "npm run lint && npm run typecheck && npm run test:cobertura && npm run build && npm run build:single && npm run tamanho",
+    "verificar": "npm run lint && npm run typecheck && npm run katex:verificar && npm run test:cobertura && npm run build && npm run build:single && npm run tamanho",
     "tamanho": "node scripts/verificar-tamanho.mjs",
     "test:cobertura": "vitest run --coverage",
-    "tabelas": "node scripts/gerar-tabelas.mjs"
+    "tabelas": "node scripts/gerar-tabelas.mjs",
+    "katex:enxugar": "node scripts/enxugar-katex.mjs",
+    "katex:verificar": "node scripts/enxugar-katex.mjs --verificar"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
