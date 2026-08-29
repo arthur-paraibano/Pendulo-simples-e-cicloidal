@@ -13,3 +13,12 @@ interface KatexGlobal {
 }
 
 declare const katex: KatexGlobal
+
+/**
+ * O alias `katex` do Vite aponta para o bundle UMD vendorizado. A declaração
+ * abaixo dá tipo ao import e mantém a mesma forma do objeto global.
+ */
+declare module 'katex' {
+  const katex: KatexGlobal
+  export default katex
+}

@@ -4,9 +4,10 @@ import './styles/tokens.css'
 import './styles/scene.css'
 import './styles/ui.css'
 import '../vendor/katex/katex.subset.css'
-// O build UMD oficial é importado como CommonJS pelo Vite e também exposto
-// para diagnóstico/versionamento no navegador.
-import katexRuntime from '../vendor/katex/katex.min.js'
+// O bundle UMD vendorizado entra pelo alias `katex` do Vite, que o pré-empacota
+// e resolve a interoperação de módulo igual em desenvolvimento e em produção.
+// Também fica exposto no navegador para diagnóstico e conferência de versão.
+import katexRuntime from 'katex'
 import { RuntimeCena } from './app/runtime.js'
 import { AgendadorQuadros } from './app/frame-scheduler.js'
 import { CamadasCanvas } from './render/layers.js'
