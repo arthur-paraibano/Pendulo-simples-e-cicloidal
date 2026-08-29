@@ -25,6 +25,8 @@ const paleta: PaletaCena = {
   sensor: '#080', sensorDisparo: '#0f0', simples: '#b00', cicloidal: '#06c', referenciaT0: '#777',
   texto: '#111', textoSuave: '#555', borda: '#666', energiaCinetica: '#06c',
   energiaPotencial: '#73c', energiaTermica: '#b50', energiaTotal: '#111',
+  valorExato: '#0a8', confiancaExcelente: '#0a0', confiancaBoa: '#5a0',
+  confiancaLimitada: '#b70', confiancaInadequada: '#b00',
 }
 
 const estado = (modo: 'simples' | 'cicloidal', parcial = {}): EstadoPenduloCena => ({

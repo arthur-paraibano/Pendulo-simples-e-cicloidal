@@ -16,6 +16,11 @@ export interface PaletaCena {
   readonly energiaPotencial: string
   readonly energiaTermica: string
   readonly energiaTotal: string
+  readonly valorExato: string
+  readonly confiancaExcelente: string
+  readonly confiancaBoa: string
+  readonly confiancaLimitada: string
+  readonly confiancaInadequada: string
 }
 
 const TOKENS = {
@@ -36,6 +41,11 @@ const TOKENS = {
   energiaPotencial: '--cor-energia-potencial',
   energiaTermica: '--cor-energia-termica',
   energiaTotal: '--cor-energia-total',
+  valorExato: '--cor-valor-exato',
+  confiancaExcelente: '--cor-confianca-excelente',
+  confiancaBoa: '--cor-confianca-boa',
+  confiancaLimitada: '--cor-confianca-limitada',
+  confiancaInadequada: '--cor-confianca-inadequada',
 } as const
 
 export interface LeitorEstilos {
