@@ -11,9 +11,9 @@ describe('serializar', () => {
   it('inclui apenas o que difere do padrão', () => {
     const s = new Store()
     s.definirParametro('alpha', 45)
-    // h₀ acompanha: é mutuamente determinado com α por h = L·sen²α/2, e a 45°
-    // vale 0,25 m — legitimamente diferente do padrão.
-    expect(serializar(s)).toBe('v=1&alpha=45&h0=0.25')
+    // Só o canônico viaja. α e h₀ são espelhos e são reconstruídos na leitura,
+    // porque incluí-los tornaria o estado dependente da ordem de aplicação.
+    expect(serializar(s)).toBe('v=1&theta0=45')
   })
 
   it('usa ponto decimal, independentemente do idioma', () => {
@@ -44,8 +44,8 @@ describe('serializar', () => {
     b.definirParametro('alpha', 45)
     b.definirParametro('N', 5)
     expect(serializar(a)).toBe(serializar(b))
-    // A ordem é a do catálogo (α é P02, h₀ é P15, N é P42), nunca a de digitação.
-    expect(serializar(a)).toBe('v=1&alpha=45&h0=0.25&N=5')
+    // A ordem é a do catálogo (θ₀ é P03, N é P42), nunca a de digitação.
+    expect(serializar(a)).toBe('v=1&theta0=45&N=5')
   })
 
   it('aceita chaves extras fora do catálogo', () => {
@@ -207,7 +207,7 @@ describe('ida e volta (o portão da Fase 3)', () => {
     aplicarAoStore(s, '#v=1&alpha=179.9&N=50')
     expect(s.numero('alpha')).toBe(179.9)
     expect(s.numero('N')).toBe(50)
-    expect(serializar(s)).toContain('alpha=179.9')
+    expect(serializar(s)).toContain('theta0=179.9')
   })
 
   it('caso 11: estado muito grande é comprimido e volta idêntico', () => {

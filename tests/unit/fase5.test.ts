@@ -184,11 +184,13 @@ describe('Fase 5 — console atômico e reprodutível', () => {
   })
 
   it('comunica os clamps derivados da troca de modo feita pelo console', () => {
-    const store = new Store({ alpha: 120, theta0: 110 })
+    // θ₀ é o canônico: informá-lo já define α, e não há como montar um estado
+    // em que os dois discordem.
+    const store = new Store({ theta0: 120 })
     const resultado = executar(store, 'modo=cicloidal')
     expect(resultado.sucesso).toBe(true)
     expect(resultado.mensagens.join(' ')).toMatch(/α foi ajustado de 120° para 90°/)
-    expect(resultado.mensagens.join(' ')).toMatch(/θ₀ foi ajustado de 110° para 90°/)
+    expect(resultado.mensagens.join(' ')).toMatch(/θ₀ foi ajustado de 120° para 90°/)
   })
 })
 

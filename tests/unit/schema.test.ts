@@ -137,7 +137,7 @@ describe('termos de busca do console', () => {
 
 describe('parâmetros centrais têm os valores da spec', () => {
   it.each([
-    ['alpha', 'α', '°', 0.1, 179.9, 10],
+    ['alpha', 'α', '°', 0, 179.9, 10],
     ['L', 'L', 'm', 0.05, 10, 1],
     ['g', 'g', 'm/s²', 0.01, 300, 9.81],
   ])('%s tem faixa e padrão corretos', (id, simbolo, unidade, min, max, padrao) => {

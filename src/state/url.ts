@@ -26,14 +26,23 @@ export interface ResultadoLeitura {
   readonly versaoLida: number
 }
 
-/** Formata um número sem zeros à direita supérfluos e sempre com ponto decimal. */
-function formatarNumero(v: number, precisao: number | undefined): string {
-  const texto = precisao === undefined ? String(v) : v.toFixed(precisao)
-  return texto.includes('.') ? texto.replace(/\.?0+$/, '') : texto
+/**
+ * Formata um número na forma mais curta que ainda o reconstrói exatamente.
+ *
+ * Truncar às casas de **apresentação** degradaria o estado ao compartilhá-lo: o
+ * armazenamento guarda precisão plena — é o que permite o passo fino mexer em
+ * α por 0,01 embora a tela mostre uma casa — e um endereço que só carregasse a
+ * casa exibida devolveria um estado diferente do original (RF-167).
+ *
+ * `String` de um número já produz a representação mais curta que volta ao mesmo
+ * valor, então valores digitados continuam curtos: 45 vira "45".
+ */
+function formatarNumero(v: number): string {
+  return String(v)
 }
 
-function serializarValor(valor: ValorParametro, precisao: number | undefined): string {
-  if (typeof valor === 'number') return formatarNumero(valor, precisao)
+function serializarValor(valor: ValorParametro): string {
+  if (typeof valor === 'number') return formatarNumero(valor)
   if (typeof valor === 'boolean') return valor ? '1' : '0'
   if (Array.isArray(valor)) return valor.join(',')
   if (typeof valor === 'object') return JSON.stringify(valor)
@@ -56,7 +65,7 @@ export function serializar(store: Store, extras: Readonly<Record<string, string>
   const naoPadrao = store.naoPadrao()
   for (const p of PARAMETROS) {
     if (!(p.id in naoPadrao)) continue
-    partes.push(`${p.id}=${serializarValor(naoPadrao[p.id] as ValorParametro, p.precisao)}`)
+    partes.push(`${p.id}=${serializarValor(naoPadrao[p.id] as ValorParametro)}`)
   }
 
   const texto = partes.join('&')

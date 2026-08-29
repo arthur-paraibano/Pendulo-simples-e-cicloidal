@@ -116,7 +116,9 @@ test.describe('Fase 5 — fórmula e parâmetros', () => {
     await controle.press('End')
     await expect(controle).toHaveValue('179,9')
     await controle.press('Home')
-    await expect(controle).toHaveValue('0,1')
+    // A faixa de α passou a admitir zero (RF-168): o mínimo anterior, 0,1°,
+    // contradizia o caso de borda já especificado, em que α = 0 é repouso.
+    await expect(controle).toHaveValue('0,0')
     await page.locator('[data-parametro="alpha"] .param-restaurar').first().click()
     await expect(controle).toHaveValue('10,0')
     await slider.focus()

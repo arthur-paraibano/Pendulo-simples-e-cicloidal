@@ -32,7 +32,9 @@ describe('Store: leitura', () => {
     const s = new Store()
     expect(Object.keys(s.naoPadrao())).toHaveLength(0)
     s.definirParametro('alpha', 45)
-    expect(s.naoPadrao()['alpha']).toBe(45)
+    // α é espelho de θ₀: quem viaja no endereço é o canônico (RF-166).
+    expect(s.naoPadrao()['theta0']).toBe(45)
+    expect(s.naoPadrao()['alpha']).toBeUndefined()
   })
 })
 
@@ -202,6 +204,73 @@ describe('Store: derivações', () => {
     // Editando h, α acompanha.
     s.definirParametro('h0', 0.25)
     expect(s.numero('alpha')).toBeCloseTo(45, 0)
+  })
+})
+
+describe('Store: coerência da posição de largada (Área M)', () => {
+  const store = () => new Store()
+
+  it('α, θ₀ e h descrevem sempre a mesma largada', () => {
+    // O defeito que originou a Área M: o painel anunciava o período de 45°
+    // enquanto a massa era largada de 10°.
+    const s = store()
+    s.definirParametro('alpha', 45)
+    expect(Math.abs(s.numero('theta0'))).toBeCloseTo(45, 9)
+    expect(s.numero('h0')).toBeCloseTo(0.25, 9)
+
+    s.definirParametro('theta0', 30)
+    expect(s.numero('alpha')).toBeCloseTo(30, 9)
+    expect(s.numero('h0')).toBeCloseTo(Math.sin((30 * Math.PI) / 180) ** 2 / 2, 9)
+
+    s.definirParametro('h0', 0.5)
+    expect(s.numero('alpha')).toBeCloseTo(90, 6)
+    expect(Math.abs(s.numero('theta0'))).toBeCloseTo(90, 6)
+  })
+
+  it('editar α não troca o lado de largada (RF-164)', () => {
+    const s = store()
+    s.definirParametro('theta0', -30)
+    s.definirParametro('alpha', 60)
+    expect(s.numero('theta0')).toBeCloseTo(-60, 9)
+    expect(s.numero('alpha')).toBeCloseTo(60, 9)
+  })
+
+  it('mudar L reconcilia h sem mexer no ângulo', () => {
+    const s = store()
+    s.definirParametro('theta0', 45)
+    s.definirParametro('L', 2)
+    expect(s.numero('alpha')).toBeCloseTo(45, 9)
+    expect(s.numero('h0')).toBeCloseTo(0.5, 9)
+  })
+
+  it('entrar no cicloidal limita o canônico junto com o espelho', () => {
+    const s = store()
+    s.definirParametro('theta0', 150)
+    s.definirParametro('modo', 'cicloidal')
+    expect(s.numero('alpha')).toBeCloseTo(90, 6)
+    expect(Math.abs(s.numero('theta0'))).toBeCloseTo(90, 6)
+  })
+
+  it('θ₀ = 0 é estado coerente: repouso, sem oscilação (RF-168)', () => {
+    const s = store()
+    s.definirParametro('theta0', 0)
+    expect(s.numero('alpha')).toBe(0)
+    expect(s.numero('h0')).toBe(0)
+  })
+
+  it('não sobra ruído de ponto flutuante na volta pelo arco-seno', () => {
+    const s = store()
+    s.definirParametro('h0', 0.25)
+    expect(s.numero('alpha')).toBe(45)
+  })
+
+  it('só o canônico é compartilhado; os espelhos são reconstruídos', () => {
+    const s = store()
+    s.definirParametro('alpha', 33)
+    const compartilhado = s.naoPadrao()
+    expect(Object.keys(compartilhado)).toContain('theta0')
+    expect(Object.keys(compartilhado)).not.toContain('alpha')
+    expect(Object.keys(compartilhado)).not.toContain('h0')
   })
 })
 

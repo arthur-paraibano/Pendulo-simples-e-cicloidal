@@ -111,7 +111,10 @@ export class Store {
   naoPadrao(): Record<string, ValorParametro> {
     const saida: Record<string, ValorParametro> = {}
     for (const p of PARAMETROS) {
-      if (p.derivado) continue
+      // Derivados nunca entram; espelhos também não, porque são reconstruídos
+      // a partir do canônico e incluí-los tornaria o resultado dependente da
+      // ordem de aplicação (RF-166).
+      if (p.derivado || p.espelhoDe !== undefined) continue
       const atual = this.valores[p.id]
       if (!iguais(atual, p.padrao)) saida[p.id] = atual as ValorParametro
     }
@@ -418,28 +421,59 @@ export class Store {
       this.escreverDireto('corpoCeleste', corpo)
     }
 
-    // Ao entrar no domínio cicloidal, condições geometricamente impossíveis
-    // são limitadas no mesmo lote. A UI compara antes/depois para comunicar
-    // exatamente quais campos mudaram (RF-025/RF-031).
-    if (idAlterado === 'modo' && this.texto('modo') !== 'simples') {
-      this.escreverDireto('alpha', this.numero('alpha'))
-      this.escreverDireto('theta0', this.numero('theta0'))
-      const L = this.numero('L')
-      const alpha = (this.numero('alpha') * Math.PI) / 180
-      this.escreverDireto('h0', (L * Math.sin(alpha) ** 2) / 2)
+    // θ₀, α e h descrevem um único fato físico: de onde a massa é solta.
+    // Qualquer um deles muda — e a troca de modo ou de L, que reposicionam o
+    // que é geometricamente possível — reconcilia o trio (Área M).
+    if (['theta0', 'alpha', 'h0', 'L', 'modo'].includes(idAlterado)) {
+      this.sincronizarLargada(idAlterado)
+    }
+  }
+
+  /**
+   * Reconcilia θ₀, α e h a partir do canônico (RF-161 a RF-165).
+   *
+   * `θ₀` é o canônico por ser o único que carrega magnitude **e** lado. Editar
+   * um espelho traduz a intenção para θ₀; os espelhos são então recalculados a
+   * partir do θ₀ **já quantizado**, e nunca do valor cru digitado — do
+   * contrário o estado guardaria um `h` que não corresponde ao `α` exibido, e a
+   * incoerência voltaria menor, porém viva.
+   */
+  private sincronizarLargada(idAlterado: string): void {
+    const L = this.numero('L')
+    const grausParaRad = Math.PI / 180
+
+    // Lado de largada preservado: mexer em α não joga a massa para o outro
+    // lado sem que isso tenha sido pedido (RF-164).
+    const theta0Atual = this.numero('theta0')
+    const lado = theta0Atual < 0 ? -1 : 1
+
+    let theta0Alvo: number
+    if (idAlterado === 'alpha') {
+      theta0Alvo = lado * Math.abs(this.numero('alpha'))
+    } else if (idAlterado === 'h0') {
+      const razao = Math.min(1, Math.max(0, (2 * this.numero('h0')) / L))
+      theta0Alvo = lado * (Math.asin(Math.sqrt(razao)) / grausParaRad)
+    } else {
+      theta0Alvo = theta0Atual
     }
 
-    // h e α são mutuamente determinados: h = L·sen²θ/2 (RF-158).
-    if (idAlterado === 'alpha' || idAlterado === 'L') {
-      const L = this.numero('L')
-      const rad = (this.numero('alpha') * Math.PI) / 180
-      this.escreverDireto('h0', arredondar((L * Math.sin(rad) ** 2) / 2, 4))
-    } else if (idAlterado === 'h0') {
-      const L = this.numero('L')
-      const razao = Math.min(1, Math.max(0, (2 * this.numero('h0')) / L))
-      const graus = (Math.asin(Math.sqrt(razao)) * 180) / Math.PI
-      this.escreverDireto('alpha', arredondar(graus, 1))
-    }
+    // O limite geométrico do modo cicloidal vale para o canônico também: sem
+    // isso, entrar no modo com θ₀ = 150° deixaria a massa fora da face.
+    const defTheta0 = POR_ID.get('theta0')!
+    const defAlpha = POR_ID.get('alpha')!
+    const faixaAlpha = this.faixaEfetiva(defAlpha)
+    const limite = Math.min(faixaAlpha.max, defTheta0.max ?? 179.9)
+    theta0Alvo = Math.sign(theta0Alvo) * Math.min(Math.abs(theta0Alvo), limite)
+
+    this.escreverDireto('theta0', theta0Alvo)
+
+    // Espelhos, sempre a partir do canônico recém-escrito e em precisão plena.
+    const theta0 = this.numero('theta0')
+    const alpha = Math.abs(theta0)
+    this.escreverDireto('alpha', alpha)
+
+    const seno = Math.sin(alpha * grausParaRad)
+    this.escreverDireto('h0', (L * seno * seno) / 2)
   }
 
   /** Escrita sem revalidar nem re-derivar — usada só pelas derivações. */
@@ -449,8 +483,7 @@ export class Store {
     let ajustado = valor
     if (typeof valor === 'number') {
       const { min, max } = this.faixaEfetiva(def)
-      ajustado = Math.min(max, Math.max(min, valor))
-      if (def.precisao !== undefined) ajustado = arredondar(ajustado as number, def.precisao)
+      ajustado = quantizarDerivado(Math.min(max, Math.max(min, valor)))
     }
     if (!iguais(this.valores[id], ajustado)) {
       this.valores[id] = ajustado
@@ -508,8 +541,21 @@ export class Store {
 
 // ── Auxiliares ──────────────────────────────────────────────────────────────
 
-function arredondar(v: number, casas: number): number {
-  const f = 10 ** casas
+/**
+ * Piso de quantização das escritas **derivadas**.
+ *
+ * Não é arredondamento de apresentação: `precisao` governa a tela, e escritas
+ * diretas do usuário guardam o valor cheio — é o que permite o passo fino mexer
+ * em α por 0,01 embora se exiba uma casa.
+ *
+ * O que se corta aqui é ruído de ponto flutuante: uma volta por `asin(sqrt(…))`
+ * devolve 45,00000000000001 em vez de 45. Nove casas ficam muito abaixo de
+ * qualquer passo fino do catálogo e muito acima de qualquer significado físico.
+ */
+const CASAS_DERIVADAS = 9
+
+function quantizarDerivado(v: number): number {
+  const f = 10 ** CASAS_DERIVADAS
   return Math.round(v * f) / f
 }
 

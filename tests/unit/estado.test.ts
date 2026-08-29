@@ -99,7 +99,9 @@ describe('presets de fábrica', () => {
     const s = new Store()
     s.definirParametro('alpha', 60)
     const preset = capturarPreset(s, 'meu-preset', 'Meu preset', 'descrição')
-    expect(preset.parametros['alpha']).toBe(60)
+    // Guarda-se o canônico da largada; α e h₀ são reconstruídos ao aplicar.
+    expect(preset.parametros['theta0']).toBe(60)
+    expect(preset.parametros['alpha']).toBeUndefined()
     expect(preset.parametros['N']).toBeUndefined()
     expect(preset.origem).toBe('usuario')
     expect(validarPreset(preset).valido).toBe(true)

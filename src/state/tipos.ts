@@ -81,6 +81,14 @@ export interface DefinicaoParametro {
   readonly aliases: readonly string[]
   /** Somente-leitura: calculado a partir de outros (RF-037). */
   readonly derivado: boolean
+  /**
+   * Espelho de outro parâmetro editável (RF-162).
+   *
+   * Continua editável — escrever nele atualiza o canônico —, mas fica fora do
+   * endereço compartilhável e dos presets: incluí-lo tornaria o estado
+   * dependente da ordem de aplicação (RF-166).
+   */
+  readonly espelhoDe?: string
   /** Existe por pêndulo e aceita índice subscrito, como `L₁` (RF-151). */
   readonly indexavel: boolean
   /** Modos em que o parâmetro faz sentido. */

@@ -26,6 +26,7 @@ const SO_CICLOIDAL: readonly ModoPendulo[] = ['cicloidal']
 interface Comum {
   aliases?: readonly string[]
   derivado?: boolean
+  espelhoDe?: string
   indexavel?: boolean
   aplicavelEm?: readonly ModoPendulo[]
   limiteDinamico?: LimiteDinamico
@@ -65,6 +66,7 @@ function num(
     nivel,
     aliases: extra.aliases ?? [],
     derivado: extra.derivado ?? false,
+    ...(extra.espelhoDe !== undefined ? { espelhoDe: extra.espelhoDe } : {}),
     indexavel: extra.indexavel ?? false,
     aplicavelEm: extra.aplicavelEm ?? AMBOS,
     afeta: extra.afeta ?? ['cena'],
@@ -118,6 +120,7 @@ function bool(
     nivel,
     aliases: extra.aliases ?? [],
     derivado: extra.derivado ?? false,
+    ...(extra.espelhoDe !== undefined ? { espelhoDe: extra.espelhoDe } : {}),
     indexavel: extra.indexavel ?? false,
     aplicavelEm: extra.aplicavelEm ?? AMBOS,
     afeta: extra.afeta ?? ['cena'],
@@ -150,6 +153,7 @@ function enu(
     nivel,
     aliases: extra.aliases ?? [],
     derivado: extra.derivado ?? false,
+    ...(extra.espelhoDe !== undefined ? { espelhoDe: extra.espelhoDe } : {}),
     indexavel: extra.indexavel ?? false,
     aplicavelEm: extra.aplicavelEm ?? AMBOS,
     afeta: extra.afeta ?? ['cena'],
@@ -181,6 +185,7 @@ function outro(
     nivel,
     aliases: extra.aliases ?? [],
     derivado: extra.derivado ?? false,
+    ...(extra.espelhoDe !== undefined ? { espelhoDe: extra.espelhoDe } : {}),
     indexavel: extra.indexavel ?? false,
     aplicavelEm: extra.aplicavelEm ?? AMBOS,
     afeta: extra.afeta ?? ['apresentacao'],
@@ -188,6 +193,16 @@ function outro(
 }
 
 const op = (valor: string, rotulo: string): OpcaoEnum => ({ valor, rotulo })
+
+/**
+ * Padrão de `h` calculado, e não escrito à mão.
+ *
+ * `h` é espelho de θ₀ (RF-162): seu valor é sempre derivado de L e α. Se o
+ * padrão fosse um literal arredondado, ele nunca coincidiria com o derivado, e
+ * `h` apareceria eternamente como "não padrão" — quebrando tanto a restauração
+ * quanto a ida e volta pelo endereço compartilhável.
+ */
+const H0_PADRAO = Math.round(((1 * Math.sin((10 * Math.PI) / 180) ** 2) / 2) * 1e9) / 1e9
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Grupo A — Geometria do pêndulo (P01–P10)
@@ -201,8 +216,9 @@ const GEOMETRIA: readonly DefinicaoParametro[] = [
     precisao: 3,
     passoFino: 0.0001,
   }),
-  num('P02', 'alpha', 'α', 'Amplitude angular inicial', 'Ângulo máximo de afastamento da vertical, de onde a massa é solta.', '°', 0.1, 179.9, 10, 0.1, 'geometria', 'basico', {
+  num('P02', 'alpha', 'α', 'Amplitude angular inicial', 'Ângulo máximo de afastamento da vertical, de onde a massa é solta.', '°', 0, 179.9, 10, 0.1, 'geometria', 'basico', {
     aliases: ['alfa', 'a', 'amplitude'],
+    espelhoDe: 'theta0',
     indexavel: true,
     afeta: ['periodo', 'cena', 'formula'],
     precisao: 1,
@@ -281,8 +297,9 @@ const CICLOIDE: readonly DefinicaoParametro[] = [
     precisao: 3,
     limiteDinamico: (v) => ({ max: v.numero('L') }),
   }),
-  num('P15', 'h0', 'h', 'Altura de largada', 'Altura acima do ponto zero de onde a massa é solta: h = L·sen²θ/2.', 'm', 0, 5, 0.0151, 0.001, 'cicloide', 'basico', {
+  num('P15', 'h0', 'h', 'Altura de largada', 'Altura acima do ponto zero de onde a massa é solta: h = L·sen²θ/2.', 'm', 0, 5, H0_PADRAO, 0.001, 'cicloide', 'basico', {
     aliases: ['altura', 'h'],
+    espelhoDe: 'theta0',
     indexavel: true,
     afeta: ['cena', 'periodo'],
     precisao: 4,
@@ -670,3 +687,6 @@ export function valoresPadrao(): Record<string, ValorParametro> {
 
 export const PARAMETROS_EDITAVEIS = PARAMETROS.filter((p) => !p.derivado)
 export const PARAMETROS_INDEXAVEIS = PARAMETROS.filter((p) => p.indexavel)
+
+/** Espelhos: editáveis, porém fora do endereço compartilhável (RF-166). */
+export const PARAMETROS_ESPELHO = PARAMETROS.filter((p) => p.espelhoDe !== undefined)

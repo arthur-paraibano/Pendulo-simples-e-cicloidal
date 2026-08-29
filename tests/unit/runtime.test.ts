@@ -79,8 +79,11 @@ describe('runtime da cena', () => {
     const estados: EstadoPenduloCena[] = []
     expect(runtime.controle.estado).toBe('pausado')
     expect(runtime.tempo).toBe(0)
+    // h₀ = 0,25 m com L = 1 m corresponde a 45°, e por ser o último do trio no
+    // lote é ele que decide: α e θ₀ passam a 45°, coerentes entre si.
     expect(store.numero('alpha')).toBe(45)
-    expect(runtime.estadosVisiveis(estados)[0]?.theta).toBeCloseTo((35 * Math.PI) / 180, 12)
+    expect(store.numero('theta0')).toBe(45)
+    expect(runtime.estadosVisiveis(estados)[0]?.theta).toBeCloseTo((45 * Math.PI) / 180, 12)
     expect(estados[0]?.alphaInicial).toBeCloseTo(Math.PI / 4, 12)
     desconectar()
   })
