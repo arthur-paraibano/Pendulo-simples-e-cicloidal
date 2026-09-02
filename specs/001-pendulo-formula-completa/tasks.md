@@ -4,7 +4,7 @@
 **Entrada**: [spec.md](./spec.md) · [plan.md](./plan.md) · [data-model.md](./data-model.md) ·
 [contracts/](./contracts/) · [quickstart.md](./quickstart.md)
 
-**Total**: 130 tarefas · **Marcador `[P]`**: pode rodar em paralelo com as demais `[P]` do mesmo lote
+**Total**: 134 tarefas · **Marcador `[P]`**: pode rodar em paralelo com as demais `[P]` do mesmo lote
 (arquivos distintos, sem dependência mútua).
 
 **Regra de ouro (Princípio IX)**: em cada fase, as tarefas de teste vêm **antes** das de
@@ -376,6 +376,25 @@ com três gráficos ativos, depende de T097 e do gate de desempenho T121.
 
 ---
 
+## Fase 3b — Coerência da posição de largada (T131–T134) ✅ CONCLUÍDA
+
+> Acrescentada em 2026-08-26, depois da Área M da spec. Numerada após as demais por
+> ter surgido de defeito observado na aplicação em execução: com `α = 45°` e
+> `θ₀ = 10°`, o painel anunciava `T = 2,085562 s` enquanto a tabela media
+> `2,0099 s` para o mesmo pêndulo.
+
+| ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
+|---|---|---|---|---|---|
+| T131 | Declarar `espelhoDe` no esquema e marcar `α` e `h` como espelhos de `θ₀` | `src/state/tipos.ts`, `src/state/schema.ts` | RF-161, RF-162 | `PARAMETROS_ESPELHO` lista os dois; faixa de `α` admite zero | T048 |
+| T132 | Reconciliar o trio a cada escrita, com `θ₀` canônico | `src/state/store.ts` | RF-163 a RF-165 | Editar qualquer um dos três deixa os outros coerentes; lado preservado | T131 |
+| T133 | Excluir espelhos do endereço e dos presets, e serializar valor exato | `src/state/store.ts`, `src/state/url.ts` | RF-166, RF-167 | Ida e volta preserva o estado, inclusive os espelhos | T132 |
+| T134 | Cobrir a regressão | `tests/unit/store.test.ts` | RF-161 a RF-168 | Sete casos: trio, lado, limite cicloidal, `θ₀ = 0`, ausência de ruído | T133 |
+
+**Portão de saída**: impossível montar estado em que a fórmula descreva um movimento
+diferente do simulado. Verificado na aplicação em execução.
+
+---
+
 ## Fase 5b — Parâmetros Indexados e Altura de Largada (T125–T130)
 
 Deriva da Área L da spec (anotações `L₁ = 0` e `h₂ = 3` do esboço). Numerada após as demais por ter
@@ -424,7 +443,7 @@ Caminho crítico: **T001 → T011 → T018 → T022 → T036 → T039 → T048 �
 
 ## Matriz de Rastreabilidade
 
-Todos os 160 requisitos funcionais e 23 não funcionais têm cobertura. **Nenhum requisito órfão.**
+Todos os 168 requisitos funcionais e 23 não funcionais têm cobertura. **Nenhum requisito órfão.**
 
 | Requisitos | Área | Tarefas |
 |---|---|---|
@@ -447,6 +466,7 @@ Todos os 160 requisitos funcionais e 23 não funcionais têm cobertura. **Nenhum
 | **RF-134 a RF-139** | **Sensor fixo no ponto zero** | **T032, T039, T041, T066, T095, T105** |
 | **RF-140 a RF-150** | **Tabela de coleta de `T` e `g`** | **T033, T042, T087–T096, T112, T114** |
 | **RF-151 a RF-160** | **Parâmetros indexados e altura de largada** | **T125–T130** |
+| **RF-161 a RF-168** | **Coerência da posição de largada** | **T131–T134** |
 | RNF-001 a RNF-005 | Desempenho | T059, T072, T097, T120, T121 |
 | RNF-006 a RNF-010 | Precisão, energia e determinismo numérico | T018, T021, T031, T035, T036, T038, T044 |
 | RNF-011 a RNF-015 | Entrega, navegadores, layout e contraste | T005, T010, T059, T061, T121, T124 |
