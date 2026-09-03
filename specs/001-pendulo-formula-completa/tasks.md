@@ -347,20 +347,44 @@ RNF-001 mantido com gráfico temporal ativo; 836 testes unitários e 86 e2e verd
 
 ---
 
-## Fase 8 — Presets, Roteiros e Exportação (T107–T114)
+## Fase 8 — Presets, Roteiros e Exportação (T107–T114) ✅ CONCLUÍDA
+
+Os presets e roteiros vivem em módulos TypeScript, e não nos `.json` previstos
+na redação original: assim os identificadores de parâmetro são conferidos pelo
+compilador, em vez de só falharem ao carregar.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
-| T107 | Criar os presets de fábrica, incluindo o do roteiro alemão | `src/data/presets.json` | RF-097 | Validados contra o JSON Schema | T054 |
-| T108 | Implementar salvar, carregar, renomear e excluir presets | `src/ui/panels/presets.ts` | RF-098 | Persistem entre sessões | T107 |
-| T109 | Implementar importar e exportar arquivo de cenário | `src/ui/panels/presets.ts` | RF-099 | Ida e volta restaura estado idêntico | T108 |
-| T110 | Implementar os roteiros guiados com avançar, voltar e sair | `src/ui/panels/roteiros.ts`, `src/data/roteiros.json` | RF-100, RF-101 | Alterar parâmetro não encerra o roteiro | T108 |
-| T111 | Implementar o desafio "Planeta X" com gravidade oculta | `src/ui/panels/roteiros.ts` | RF-104 | Comparação só após submissão | T110, T042 |
-| T112 | Implementar a exportação CSV conforme o contrato | `src/export/csv.ts` | RF-148 | BOM UTF-8; 10 testes do contrato passam | T096 |
-| T113 | [P] Implementar a exportação de imagem da cena e dos gráficos | `src/export/png.ts` | RF-111 | PNG com os parâmetros impressos | T072 |
-| T114 | Implementar a projeção das medições sobre as curvas teóricas | `src/render/charts/timeseries.ts` | RF-103 | Pontos medidos sobre a curva `T(α)` | T100, T096 |
+| T107 | ✅ Presets de fábrica, incluindo o do roteiro alemão | `src/state/presets.ts` | RF-097 | Todos com ids de parâmetro existentes, verificado por teste | T054 |
+| T108 | ✅ Salvar, carregar, renomear e excluir presets | `src/ui/panels/cenarios.ts` | RF-098 | Persistem entre sessões | T107 |
+| T109 | ✅ Importar e exportar arquivo de cenário | `src/ui/panels/cenarios.ts` | RF-099 | Ida e volta restaura estado idêntico, com o estado indexado junto | T108 |
+| T110 | ✅ Roteiros guiados com avançar, voltar e sair | `src/state/roteiros.ts`, `src/ui/panels/cenarios.ts` | RF-100, RF-101 | Alterar parâmetro não encerra o roteiro | T108 |
+| T111 | ✅ Desafio "Planeta X" com gravidade oculta | `src/state/roteiros.ts`, `src/ui/panels/cenarios.ts` | RF-104 | Comparação só após submissão | T110, T042 |
+| T112 | ✅ Exportação CSV conforme o contrato, e o endereço compartilhável publicado | `src/export/csv.ts`, `src/state/endereco.ts` | RF-106, RF-109, RF-148 | BOM UTF-8; os 10 testes do contrato passam | T096 |
+| T113 | ✅ Exportação de imagem da cena, carimbada | `src/export/png.ts`, `src/render/layers.ts` | RF-110 | PNG com os parâmetros e a fórmula impressos | T072 |
+| T114 | ✅ Medições projetadas sobre a curva teórica | `src/state/charts.ts` | RF-103 | Pontos medidos sobre a curva `T(α)` | T100, T096 |
 
-**Portão de saída**: Cenários 7, 8 e 10 do quickstart passando.
+**Portão de saída**: ✅ Cenários 7, 8 e 10 passando (`tests/e2e/cenarios.spec.ts`);
+955 testes unitários e 126 de ponta a ponta verdes.
+
+**Achados registrados nesta fase**
+
+- **O exemplo do Cenário 10.4 era anterior à Área M.** Prometia
+  `#v=1&alpha=45&...`, mas desde que θ₀ virou o canônico da largada os espelhos
+  não entram no endereço (RF-166) — o que sai é `theta0=45`, e α se reconstrói
+  dele ao abrir.
+- **O preset da tautócrona não fazia nada.** Pedia `massasTautocrona: 3` (P18),
+  um parâmetro que descreve a mesma coisa que `n_p` e nunca é lido. Passa a usar
+  `numeroPendulos` com as três alturas independentes que a Fase 5b tornou
+  possíveis, e P18 fica no catálogo como redundância conhecida.
+- **Presets não carregavam o estado por pêndulo.** `capturarPreset` só guardava
+  o catálogo, de modo que a ida e volta de RF-099 devolvia três massas na mesma
+  altura. O estado indexado passa a viajar junto.
+- **P114 acrescentado**: RF-104 condiciona a revelação de `g` à submissão da
+  estimativa, mas nada registrava se a submissão ocorrera.
+- **Publicar o endereço quebrava fora do navegador.** O fallback era
+  `globalThis`, que existe em qualquer ambiente mas só traz `location` no
+  navegador; a guarda conferia o objeto em vez do recurso.
 
 ---
 
@@ -445,9 +469,9 @@ sido acrescentada em revisão posterior; executa junto com a Fase 5.
   intervalo nulo com a simulação pausada.
 
 **Fora do escopo desta fase**: a escrita do endereço compartilhável na barra do
-navegador é T112 (Fase 8). A serialização do estado indexado já existe e está
-coberta; o que falta é a aplicação publicá-la. O cabeçalho indexado do arquivo
-exportado depende da exportação CSV, que é T114.
+navegador e o cabeçalho indexado do arquivo exportado ficam para a Fase 8, junto
+com a exportação (T112). A serialização do estado indexado já existe e está
+coberta; o que falta é a aplicação publicá-la.
 
 ---
 

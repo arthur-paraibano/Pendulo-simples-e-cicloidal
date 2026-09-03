@@ -968,7 +968,13 @@ leituras e a notação matemática acompanham a escolha.
 | P111 | `SR` | Descrições para leitor de tela | booleano | ligadas | Básico |
 | P112 | `MOV` | Reduzir movimento | booleano | automático (segue o sistema) | Básico |
 | P113 | `FOCO` | Pêndulo em foco | — | 1 – 8 | 1 | 1 | Básico |
+| P114 | `PXOK` | Estimativa do desafio submetida | booleano | falso | Básico |
 
+> **P114 acrescentado em revisão.** RF-104 condiciona a revelação do valor
+> verdadeiro de `g` à submissão da estimativa, mas nada no catálogo registrava
+> se a submissão ocorreu — sem esse registro, "só após a submissão" não teria
+> como ser cumprido.
+>
 > **P113 acrescentado em revisão.** RF-153 exige que uma atribuição sem índice
 > se aplique "ao pêndulo em foco" quando o parâmetro está desacoplado, mas o
 > catálogo original não declarava esse foco em lugar nenhum. Sem ele o

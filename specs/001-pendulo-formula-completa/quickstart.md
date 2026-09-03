@@ -209,7 +209,7 @@ padrão (botão "Restaurar tudo"). Tolerância de leitura: as casas decimais exi
 | 10.1 | Exportar a tabela em CSV | Arquivo com BOM UTF-8, metadados em `#`, colunas `n;pendulo;T_s;g_inferido_m_s2;alpha_graus;L_m;erro_relativo_pct` |
 | 10.2 | Abrir no Excel em português | Colunas separadas corretamente, sem assistente de importação |
 | 10.3 | Conferir uma linha de `α = 45°`, modo simples | `T_s = 2,085562`; `g_inferido_m_s2 = 9,803478` |
-| 10.4 | Copiar o endereço compartilhável | Formato `#v=1&alpha=45&L=1&g=9.81&N=2&vis=ambos` |
+| 10.4 | Copiar o endereço compartilhável | Formato `#v=1&vis=ambos&L=1&theta0=45&g=9.81&N=2`, em ordem de catálogo. Traz `theta0`, e não `alpha`: desde a Área M o canônico da largada é θ₀, e os espelhos se reconstroem dele (RF-166) |
 | 10.5 | Abrir o endereço em outra aba | Estado idêntico restaurado |
 | 10.6 | Reserializar | Endereço **idêntico**, caractere a caractere |
 | 10.7 | Exportar imagem da cena | PNG legível, com os valores dos parâmetros impressos |

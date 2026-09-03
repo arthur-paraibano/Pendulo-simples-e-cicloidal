@@ -119,13 +119,14 @@ constitution ──▶ specify ──▶ plan ──▶ tasks ──▶ implemen
 | 5b · Parâmetros indexados | `L₁`, `h₂`, acoplar/desacoplar, alturas independentes | ✅ |
 | 6 · Tabela de coleta | A tabela de `T` e `g` sob a fórmula | ✅ |
 | 7 · Gráficos e instrumentos | Sete gráficos, cronômetro e fotoporta móvel | ✅ |
-| 8–10 | Presets, roteiros, exportação, i18n, acessibilidade, entrega | ⬜ |
+| 8 · Presets e exportação | Cenários, roteiros, desafio, CSV, imagem e endereço | ✅ |
+| 9–10 | i18n, acessibilidade, notas físicas, publicação | ⬜ |
 
-**Como está verificado hoje**: 899 testes unitários (98,5 % de instruções, 93,2 % de ramos); 106
+**Como está verificado hoje**: 955 testes unitários (98,9 % de instruções, 93,9 % de ramos); 126
 cenários de ponta a ponta em Chromium, Firefox e WebKit; build comprimido para Pages e arquivo único
 offline dentro do orçamento, ambos sem requisição externa.
 
 Para prosseguir, execute as tarefas de [tasks.md](specs/001-pendulo-formula-completa/tasks.md) a
-partir da Fase 8. Cada fase tem um portão de saída verificável, e as tarefas de teste precedem as de
+partir da Fase 9. Cada fase tem um portão de saída verificável, e as tarefas de teste precedem as de
 implementação — as tabelas numéricas de
 [research.md](specs/001-pendulo-formula-completa/research.md) são a fonte de verdade das fixtures.
