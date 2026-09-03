@@ -6,13 +6,17 @@
  * referência — e não conferida a olho depois de desenhada.
  */
 
-import { amplitudeCorrente, varreduraPeriodoPorAmplitude } from '../physics/analysis.js'
+import {
+  amplitudeCorrente,
+  termosNecessarios,
+  varreduraPeriodoPorAmplitude,
+} from '../physics/analysis.js'
 import {
   periodoDuasIteracoes,
   periodoKiddFogg,
   periodoLimaArun,
 } from '../physics/approximations.js'
-import { ALPHA_MAX_CICLOIDAL_GRAUS } from '../physics/constants.js'
+import { ALPHA_MAX_CICLOIDAL_GRAUS, N_MAXIMO } from '../physics/constants.js'
 import { energias } from '../physics/energy.js'
 import type { Amostra } from '../physics/engine.js'
 import { aceleracaoGeneralizada, type ParametrosDinamica } from '../physics/ode.js'
@@ -64,6 +68,13 @@ export interface EixoGrafico {
   readonly rotulo: string
   readonly tipo: TipoEscala
   readonly unidade: string | null
+  /**
+   * Casas decimais na leitura da legenda.
+   *
+   * Sem isto, uma contagem de termos apareceria como `N = 2,0000`. O eixo sabe
+   * o que a sua grandeza é; a legenda, não.
+   */
+  readonly casas?: number
 }
 
 export interface ModeloGrafico {
@@ -261,6 +272,24 @@ export function graficoErroPorAmplitude(store: Store, passos = 120): ModeloGrafi
  * É o gráfico do Cenário 9: mostra que a 90° são precisos seis termos para
  * 0,1 %, e que o custo explode conforme a amplitude se aproxima de 180°.
  */
+/**
+ * Traduz o gráfico de convergência em uma frase com o custo real (RF-013).
+ *
+ * O eixo logarítmico mostra o decaimento, mas não responde à pergunta prática
+ * do usuário — *quantos termos bastam?* —, e é essa resposta que revela a
+ * explosão do custo perto de 180°.
+ */
+function descreverConvergencia(alpha: Rad, modo: ModoPendulo): string {
+  if (modo === 'cicloidal') {
+    return 'No cicloidal não há o que convergir: todo termo n ≥ 1 é anulado e o primeiro já é exato.'
+  }
+  const texto = (tol: number, rotulo: string): string => {
+    const n = termosNecessarios(alpha, tol, modo)
+    return n === null ? `mais de ${N_MAXIMO} termos para ${rotulo}` : `N ≥ ${n} para ${rotulo}`
+  }
+  return `Nesta amplitude: ${texto(1e-3, '0,1 %')}; ${texto(1e-4, '0,01 %')}.`
+}
+
 export function graficoConvergencia(store: Store, nMaximo = 20): ModeloGrafico {
   const modo = modoDoStore(store)
   const alpha = g(store.numero('alpha'))
@@ -276,8 +305,8 @@ export function graficoConvergencia(store: Store, nMaximo = 20): ModeloGrafico {
   return {
     id: 'convergencia',
     titulo: 'Convergência da série',
-    descricao: 'Quantos termos são necessários para a precisão desejada, na amplitude corrente.',
-    eixoX: { rotulo: 'Número de termos N', tipo: 'linear', unidade: null },
+    descricao: descreverConvergencia(alpha, modo),
+    eixoX: { rotulo: 'Número de termos N', tipo: 'linear', unidade: null, casas: 0 },
     eixoY: { rotulo: 'Erro relativo', tipo: 'logaritmica', unidade: null },
     series: [
       {
@@ -326,7 +355,7 @@ export function graficoTemporal(
   return {
     id: 'temporal',
     titulo: 'Movimento no tempo',
-    descricao: 'Ângulo, velocidade angular e aceleração da massa.',
+    descricao: comNotaDeAmostras('Ângulo, velocidade angular e aceleração da massa.', store, amostras),
     eixoX: { rotulo: 'Tempo t', tipo: 'linear', unidade: 's' },
     eixoY: { rotulo: 'Grandeza', tipo: 'linear', unidade: null },
     series: [
@@ -388,7 +417,7 @@ export function graficoEnergia(
   return {
     id: 'energia',
     titulo: 'Energia mecânica',
-    descricao: 'Sem dissipação, a soma permanece constante.',
+    descricao: comNotaDeAmostras('Sem dissipação, a soma permanece constante.', store, amostras),
     eixoX: { rotulo: 'Tempo t', tipo: 'linear', unidade: 's' },
     eixoY: { rotulo: 'Energia', tipo: 'linear', unidade: 'J' },
     series: [
@@ -407,13 +436,18 @@ export function graficoEnergia(
  * um renderizador de séries temporais não serviria.
  */
 export function graficoRetratoDeFase(
+  store: Store,
   amostras: readonly Amostra[],
   modo: ModoPendulo,
 ): ModeloGrafico {
   return {
     id: 'retrato-de-fase',
     titulo: 'Espaço de fase',
-    descricao: 'Sem atrito a trajetória é fechada; com atrito, espirala até o repouso.',
+    descricao: comNotaDeAmostras(
+      'Sem atrito a trajetória é fechada; com atrito, espirala até o repouso.',
+      store,
+      amostras,
+    ),
     eixoX: { rotulo: 'Ângulo θ', tipo: 'linear', unidade: '°' },
     eixoY: { rotulo: 'Velocidade angular ω', tipo: 'linear', unidade: 'rad/s' },
     series: [
@@ -465,5 +499,105 @@ export function periodoCorrente(store: Store): { serie: number; exato: number; T
     serie: periodoSerie(L, gravidade, alpha, store.numero('N'), modo),
     exato: periodoExato(L, gravidade, alpha, modo),
     T0: periodoPequenaAmplitude(L, gravidade),
+  }
+}
+
+// ── Seção de Poincaré ────────────────────────────────────────────────────────
+
+/**
+ * Seção de Poincaré (RF-086).
+ *
+ * Amostra o estado uma vez por ciclo do forçamento externo. Sem forçamento não
+ * há período de amostragem definido, e o gráfico devolve série vazia com a
+ * explicação — em vez de desenhar uma nuvem sem significado.
+ */
+/**
+ * Acrescenta o motivo de um gráfico temporal estar vazio.
+ *
+ * A fonte de movimento padrão é a fórmula fechada (P44), que não integra e
+ * portanto não acumula amostras. Sem esta nota o usuário veria um painel em
+ * branco e concluiria que o gráfico está quebrado, quando falta apenas trocar
+ * a origem do movimento.
+ */
+function comNotaDeAmostras(
+  descricao: string,
+  store: Store,
+  amostras: readonly Amostra[],
+): string {
+  if (amostras.length > 1) return descricao
+  return store.texto('fonteMovimento') === 'formula'
+    ? `${descricao} Exige FONTE = integração numérica: a fórmula fechada não produz a série temporal.`
+    : `${descricao} Aguardando a simulação avançar.`
+}
+
+export function graficoPoincare(
+  store: Store,
+  amostras: readonly Amostra[],
+  modo: ModoPendulo,
+): ModeloGrafico {
+  const omega = store.numero('omegaForcamento')
+  const forcado = store.numero('amplitudeForcamento') > 0 && omega > 0
+
+  const pontos: PontoSerie[] = []
+  if (forcado && amostras.length > 1) {
+    const periodo = (2 * Math.PI) / omega
+    let proximo = periodo
+    for (let i = 1; i < amostras.length; i++) {
+      const anterior = amostras[i - 1]!
+      const atual = amostras[i]!
+      while (atual.t >= proximo && anterior.t < proximo) {
+        // Interpola no instante exato da amostragem estroboscópica.
+        const fracao = (proximo - anterior.t) / (atual.t - anterior.t)
+        pontos.push({
+          x: ((anterior.theta + (atual.theta - anterior.theta) * fracao) * 180) / Math.PI,
+          y: anterior.qPonto + (atual.qPonto - anterior.qPonto) * fracao,
+        })
+        proximo += periodo
+      }
+    }
+  }
+
+  return {
+    id: 'poincare',
+    titulo: 'Seção de Poincaré',
+    descricao: forcado
+      ? 'Um ponto por ciclo do forçamento: poucos pontos indicam movimento periódico; uma nuvem, regime caótico.'
+      : 'Exige forçamento externo: sem um período de amostragem definido, a seção não tem significado.',
+    eixoX: { rotulo: 'Ângulo θ', tipo: 'linear', unidade: '°' },
+    eixoY: { rotulo: 'Velocidade angular ω', tipo: 'linear', unidade: 'rad/s' },
+    series: [
+      {
+        id: 'poincare-pontos',
+        rotulo: 'Estado a cada ciclo',
+        cor: modo === 'cicloidal' ? 'cicloidal' : 'simples',
+        forma: 'pontos',
+        traco: 'solido',
+        pontos,
+      },
+    ],
+    marcadores: [],
+  }
+}
+
+/** Identificadores dos gráficos que dependem das amostras da simulação. */
+export const GRAFICOS_TEMPORAIS = ['temporal', 'energia', 'retrato-de-fase', 'poincare'] as const
+export type IdGraficoTemporal = (typeof GRAFICOS_TEMPORAIS)[number]
+
+/** Constrói um gráfico temporal pelo identificador. */
+export function graficoTemporalPorId(
+  id: IdGraficoTemporal,
+  store: Store,
+  amostras: readonly Amostra[],
+  modo: ModoPendulo,
+): ModeloGrafico {
+  switch (id) {
+    case 'energia':
+      return graficoEnergia(store, amostras, modo)
+    case 'retrato-de-fase':
+      return graficoRetratoDeFase(store, amostras, modo)
+    case 'poincare':
+      return graficoPoincare(store, amostras, modo)
+    default:
+      return graficoTemporal(store, amostras, modo)
   }
 }

@@ -6,8 +6,10 @@
  * assinatura da isocronia.
  */
 
+import { N_MAXIMO } from './constants.js'
 import { razaoPeriodoExata } from './elliptic.js'
 import { periodoPequenaAmplitude, periodoSerie } from './period.js'
+import { somatorioSerie } from './series.js'
 import type { ModoPendulo } from './types.js'
 import {
   ErroDeDominio,
@@ -131,4 +133,35 @@ export function amplitudeCorrente(amostras: readonly { q: number }[]): number | 
     maximo = Math.max(maximo, Math.abs(q))
   }
   return maximo
+}
+
+/**
+ * Menor `N` cuja série truncada atinge a tolerância relativa pedida (RF-013).
+ *
+ * Responde à pergunta que o gráfico de convergência levanta: *quantos termos
+ * bastam aqui?* A resposta depende fortemente da amplitude — a 90° bastam 6
+ * termos para 0,1 %, enquanto a 150° a resposta matemática é 53, **acima do
+ * teto de `N_MAXIMO`**. Devolver `null` nesse caso não é uma limitação a
+ * esconder: é justamente a explosão de custo perto de 180° que justifica
+ * existir um valor exato ao lado da série.
+ *
+ * @param tolerancia erro relativo aceitável, em fração (0,001 = 0,1 %).
+ * @param nMaximo teto de busca; não pode exceder o domínio do somatório.
+ * @returns o menor `N`, ou `null` se `nMaximo` não bastar.
+ */
+export function termosNecessarios(
+  alpha: Rad,
+  tolerancia: number,
+  modo: ModoPendulo = 'simples',
+  nMaximo: number = N_MAXIMO,
+): number | null {
+  if (!(tolerancia > 0)) throw new ErroDeDominio('tolerância', tolerancia, 'tolerância > 0')
+  // No cicloidal todo termo n ≥ 1 é anulado, e N = 0 já é exato por construção.
+  const exato = modo === 'cicloidal' ? 1 : razaoPeriodoExata(alpha)
+  const teto = Math.min(nMaximo, N_MAXIMO)
+  for (let n = 0; n <= teto; n++) {
+    const razao = somatorioSerie(alpha, n, modo)
+    if (Math.abs((razao - exato) / exato) <= tolerancia) return n
+  }
+  return null
 }

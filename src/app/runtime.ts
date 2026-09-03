@@ -1,3 +1,4 @@
+import type { Amostra } from '../physics/engine.js'
 import { MotorPendulo } from '../physics/engine.js'
 import { aceleracaoGeneralizada, exigirModeloAtritoImplementado, type ParametrosDinamica } from '../physics/ode.js'
 import { periodoExato, periodoPequenaAmplitude } from '../physics/period.js'
@@ -167,6 +168,29 @@ export class RuntimeCena {
     }
     this.tempoFormula += deltaSimulado
     this.sincronizarRelogio()
+  }
+
+  /**
+   * Amostras da trajetória de um modo, para os gráficos temporais.
+   *
+   * Devolve lista vazia quando o modo não está em cena — assim o painel de
+   * gráficos não precisa saber nada sobre a montagem dos motores.
+   */
+  amostrasDoModo(modo: ModoPendulo): readonly Amostra[] {
+    return this.runtimes.get(modo)?.motor.amostras ?? []
+  }
+
+  /**
+   * Modos atualmente em cena, na ordem em que aparecem.
+   *
+   * Espelha a decisão de `estadosVisiveis`: o valor de comparação é
+   * `comparacao`, e tratar qualquer outro valor como "os dois" mascararia um
+   * modo inválido em vez de expô-lo.
+   */
+  modosVisiveis(): readonly ModoPendulo[] {
+    const modo = this.store.texto('modo')
+    if (modo === 'comparacao') return ['simples', 'cicloidal']
+    return modo === 'cicloidal' ? ['cicloidal'] : ['simples']
   }
 
   estadosVisiveis(saida: EstadoPenduloCena[]): EstadoPenduloCena[] {

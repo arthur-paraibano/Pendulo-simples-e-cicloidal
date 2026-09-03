@@ -374,6 +374,91 @@
   font-family: var(--fonte-numerica);
 }
 
+/* ── Gráficos (F7) ─────────────────────────────────────────────────────────── */
+
+.painel-graficos,
+.painel-medicoes {
+  margin: var(--esp-3);
+  padding: var(--esp-4);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-grande);
+  background: var(--cor-fundo-elevado);
+}
+
+.graficos-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+}
+
+.graficos-cabecalho h2 { margin: 0; margin-right: auto; }
+.graficos-cabecalho label { color: var(--cor-texto-suave); font-size: var(--tam-texto-pequeno); }
+
+.graficos-descricao {
+  margin: var(--esp-2) 0 var(--esp-3);
+  color: var(--cor-texto-suave);
+  font-size: var(--tam-texto-pequeno);
+}
+
+.graficos-moldura {
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-fundo);
+  overflow: hidden;
+}
+
+.graficos-tela { display: block; width: 100%; }
+
+/* Legenda em colunas: os valores alinham entre si para a comparação ser direta. */
+.graficos-legenda {
+  display: flex;
+  align-items: baseline;
+  gap: var(--esp-2) var(--esp-6);
+  flex-wrap: wrap;
+  margin: var(--esp-3) 0 0;
+}
+
+.graficos-legenda > div { display: flex; align-items: baseline; gap: var(--esp-2); }
+.graficos-legenda dt { display: flex; align-items: center; gap: var(--esp-2); color: var(--cor-texto-suave); font-size: var(--tam-texto-pequeno); }
+
+.graficos-legenda dt::before {
+  content: '';
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--cor-serie, var(--cor-texto-suave));
+}
+
+.graficos-legenda dd { margin: 0; font-family: var(--fonte-numerica); }
+
+.graficos-legenda-x {
+  width: 100%;
+  padding-bottom: var(--esp-1);
+  border-bottom: 1px solid var(--cor-borda);
+  color: var(--cor-texto);
+  font-family: var(--fonte-numerica);
+  font-size: var(--tam-texto-pequeno);
+}
+
+/* ── Instrumentos (F7) ─────────────────────────────────────────────────────── */
+
+.painel-medicoes { display: grid; gap: var(--esp-4); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.painel-medicoes > h2 { grid-column: 1 / -1; margin: 0; }
+.medicao-bloco { display: flex; flex-direction: column; gap: var(--esp-2); }
+.medicao-bloco h3 { margin: 0; font-size: var(--tam-texto-grande); }
+
+.medicao-leitura {
+  font-family: var(--fonte-numerica);
+  font-size: var(--tam-texto-grande);
+  font-variant-numeric: tabular-nums;
+}
+
+.medicao-leitura[data-estado='contando'] { color: var(--cor-acento); }
+.medicao-acoes { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
+.medicao-derivada,
+.medicao-nota { margin: 0; color: var(--cor-texto-suave); font-size: var(--tam-texto-pequeno); }
+
 @media (min-width: 900px) {
   .palco-canvas { height: clamp(300px, 40vh, 460px); }
 }

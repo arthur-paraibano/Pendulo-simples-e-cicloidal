@@ -163,7 +163,13 @@ export function lerNoPonto(modelo: ModeloGrafico, valorX: number): LeituraCursor
   return leituras
 }
 
-function corDaPaleta(paleta: PaletaCena, chave: string): string {
+/**
+ * Resolve a chave de cor de uma série contra a paleta viva.
+ *
+ * Exportada para a legenda usar a mesma resolução do traço: um swatch que não
+ * bate com a curva desenhada é pior que swatch nenhum.
+ */
+export function corDaPaleta(paleta: PaletaCena, chave: string): string {
   const valor = (paleta as unknown as Record<string, string | undefined>)[chave]
   return valor ?? paleta.texto
 }

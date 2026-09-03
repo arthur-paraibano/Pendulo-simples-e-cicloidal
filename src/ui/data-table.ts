@@ -194,7 +194,7 @@ export function criarTabelaColeta(
         <div class="tabela-coleta-controles" aria-label="Controles da coleta">
           <button type="button" data-acao="alternar-automatica" aria-pressed="${coletaAutomaticaAtiva}">${rotuloAutomatica}</button>
           <label>Grandeza
-            <select data-acao="grandeza" aria-label="Grandeza medida">
+            <select data-acao="grandeza" aria-label="Grandeza medida pelo sensor">
               <option value="periodoCompleto"${grandezaAtual() === 'periodoCompleto' ? ' selected' : ''}>Período completo</option>
               <option value="meioPeriodo"${grandezaAtual() === 'meioPeriodo' ? ' selected' : ''}>Meio período</option>
             </select>

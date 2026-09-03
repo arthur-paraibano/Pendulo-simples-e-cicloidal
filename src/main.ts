@@ -21,6 +21,8 @@ import { criarPainelParametros } from './ui/panels/parametros.js'
 import { criarConsoleParametros } from './ui/param-console.js'
 import { criarPainelFormula } from './ui/formula.js'
 import { criarTabelaColeta } from './ui/data-table.js'
+import { criarPainelGraficos } from './ui/panels/graficos.js'
+import { criarPainelMedicoes } from './ui/panels/medicoes.js'
 
 ;(globalThis as typeof globalThis & { katex: KatexGlobal }).katex = katexRuntime
 
@@ -119,6 +121,8 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const recipienteFormula = document.querySelector<HTMLElement>('#formula')
   const recipienteTabela = document.querySelector<HTMLElement>('#tabela-coleta')
   const recipienteParametros = document.querySelector<HTMLElement>('#painel-parametros')
+  const recipienteGraficos = document.querySelector<HTMLElement>('#graficos')
+  const recipienteMedicoes = document.querySelector<HTMLElement>('#medicoes')
   if (cabecalho !== null) {
     cabecalho.hidden = false
     cabecalho.innerHTML = '<div><strong>Pêndulo</strong><span>Fórmula Completa</span></div><p>Uma fórmula-motor, dois regimes físicos.</p>'
@@ -150,6 +154,10 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     ? null
     : criarTabelaColeta(recipienteTabela, store, runtime, { anunciar })
   const painel = recipienteParametros === null ? null : criarPainelParametros(recipienteParametros, store, anunciar)
+  const graficos =
+    recipienteGraficos === null ? null : criarPainelGraficos(recipienteGraficos, store, runtime)
+  const medicoes =
+    recipienteMedicoes === null ? null : criarPainelMedicoes(recipienteMedicoes, store, { anunciar })
   const consoleParametros = recipienteParametros === null ? null : criarConsoleParametros(recipienteParametros, store, anunciar)
 
   const atualizarEstadoControles = (): void => {
@@ -178,6 +186,10 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     const quadroAtual = prepararQuadro()
     const tempos = cena.renderizar(quadroAtual)
     painel?.atualizarDinamica(quadroAtual.pendulos, agora)
+    // Os painéis abaixo se autolimitam: o de gráficos redesenha no máximo a
+    // 20 Hz (RNF-002), e o de instrumentos só formata texto.
+    graficos?.atualizar()
+    medicoes?.atualizar()
     diagnostico.adicionar(dt, tempos)
     if (agora - ultimoDiagnostico >= 1000) {
       ultimoDiagnostico = agora
@@ -254,6 +266,8 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     runtime.destruir()
     seletor?.destruir()
     formula?.destruir()
+    graficos?.destruir()
+    medicoes?.destruir()
     tabela?.destruir()
     consoleParametros?.destruir()
     painel?.destruir()
