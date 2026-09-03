@@ -374,6 +374,30 @@
   font-family: var(--fonte-numerica);
 }
 
+/* ── Acoplamento por parâmetro (F5b) ──────────────────────────────────────── */
+
+.param-acoplamento {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-fundo);
+  color: var(--cor-texto-suave);
+  cursor: pointer;
+  font-size: var(--tam-texto-pequeno);
+  line-height: 1;
+}
+
+/* Desacoplado é o estado excepcional, e é ele que precisa saltar aos olhos. */
+.param-acoplamento[aria-pressed='false'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.param-entrada:has(.param-acoplamento) { grid-template-columns: minmax(70px, 86px) auto 36px 36px; }
+
 /* ── Gráficos (F7) ─────────────────────────────────────────────────────────── */
 
 .painel-graficos,

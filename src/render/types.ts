@@ -16,6 +16,8 @@ export interface VetorMundo {
 
 export interface EstadoPenduloCena {
   readonly id: string
+  /** Indice do pendulo, de 1 a n_p, para rotulo e cor (RF-156). */
+  readonly indice: number
   readonly modo: ModoCena
   readonly L: number
   readonly m: number
@@ -39,6 +41,8 @@ export type ForcaVisual = 'peso' | 'tracao' | 'arrasto' | 'externa' | 'resultant
 
 export interface OpcoesCena {
   readonly zoom: number
+  /** Pêndulo em foco (P113): o único que recebe anotações numéricas na cena. */
+  readonly penduloFoco: number
   readonly exibirEvoluta: boolean
   readonly exibirInvoluta: boolean
   readonly transferidor: boolean

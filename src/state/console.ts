@@ -16,7 +16,7 @@
  * atribuições daquela linha. Metade de um comando aplicada é pior que nenhum.
  */
 
-import { encontrarParametro, normalizarChave, POR_ID } from './schema.js'
+import { encontrarParametro, normalizarChave, PARAMETROS_INDEXAVEIS, POR_ID } from './schema.js'
 import { interpretarEntradaNumerica } from './numeric-input.js'
 import { Store } from './store.js'
 
@@ -188,7 +188,7 @@ export function executar(store: Store, linha: string): ResultadoConsole {
         erros.push(`Linha ${a.linha}, posição ${a.posicao}: ${def.simbolo} é calculado a partir de outros e não pode ser definido.`)
         continue
       }
-      const resultado = candidato.definirParametro(a.id, a.valor, 'usuario')
+      const resultado = candidato.definirIndexado(a.id, a.indice ?? null, a.valor, 'usuario')
       if (!resultado.aplicado && resultado.mensagem !== undefined) {
         erros.push(`Linha ${a.linha}, posição ${a.posicao}: ${resultado.mensagem}`)
       }
@@ -202,8 +202,11 @@ export function executar(store: Store, linha: string): ResultadoConsole {
   const mensagens: string[] = []
   store.emLote(() => {
     for (const a of analise.atribuicoes) {
-      const resultado = store.definirParametro(a.id, a.valor, 'usuario')
+      const resultado = store.definirIndexado(a.id, a.indice ?? null, a.valor, 'usuario')
       if (resultado.mensagem !== undefined) mensagens.push(resultado.mensagem)
+      // Qual pêndulo a linha alcançou não é dedutível do texto digitado: com os
+      // parâmetros acoplados `L = 2` muda todos, e soltos muda um só (RF-153).
+      if (resultado.explicacao !== '') mensagens.push(resultado.explicacao)
     }
   })
 
@@ -213,7 +216,13 @@ export function executar(store: Store, linha: string): ResultadoConsole {
       const antes = estadoAnterior[id]
       const depois = store.bruto(id)
       const foiEscrito = analise.atribuicoes.some((atribuicao) => atribuicao.id === id)
-      if (!foiEscrito && typeof antes === 'number' && typeof depois === 'number' && antes !== depois) {
+      // Só é restrição geométrica se o valor tiver de fato encostado no limite
+      // do modo. Sem esta conferência, qualquer reconciliação do trio — trocar
+      // h, por exemplo — seria anunciada como um limite que não houve.
+      const def0 = POR_ID.get(id)!
+      const limite = store.faixaEfetiva(def0).max
+      const encostou = typeof depois === 'number' && Math.abs(Math.abs(depois) - limite) < 1e-6
+      if (!foiEscrito && encostou && typeof antes === 'number' && typeof depois === 'number' && antes !== depois) {
         const def = POR_ID.get(id)!
         mensagens.push(
           `${def.simbolo} foi ajustado de ${antes}${def.unidade ?? ''} para ${depois}${def.unidade ?? ''} pela restrição geométrica do modo cicloidal.`,
@@ -233,6 +242,18 @@ export function formatarEstadoConsole(store: Store): string {
     if (def === undefined || def.derivado || typeof valor === 'object') continue
     const texto = typeof valor === 'boolean' ? (valor ? 'ligado' : 'desligado') : String(valor)
     linhas.push(`${id} = ${texto}${def.unidade === null ? '' : ` ${def.unidade}`}`)
+  }
+  // Sobreposicoes por pendulo, na notacao que o proprio console reconhece de
+  // volta (RF-152, RF-156). Sem elas, "gerar estado atual" produziria um bloco
+  // que descreve um experimento diferente do que esta na tela.
+  for (const p of PARAMETROS_INDEXAVEIS) {
+    if (p.espelhoDe !== undefined || store.acoplado(p.id)) continue
+    for (const i of store.indicesDePendulo()) {
+      const valor = store.brutoDoPendulo(p.id, i)
+      if (typeof valor === 'object') continue
+      const texto = typeof valor === 'boolean' ? (valor ? 'ligado' : 'desligado') : String(valor)
+      linhas.push(`${p.id}_${i} = ${texto}${p.unidade === null ? '' : ` ${p.unidade}`}`)
+    }
   }
   return linhas.join('\n')
 }

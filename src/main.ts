@@ -55,8 +55,12 @@ class DiagnosticoQuadro {
       for (let i = 0; i < this.tamanho; i++) soma += valores[i]!
       return soma / this.tamanho
     }
-    const fps = 1 / Math.max(1e-6, media(this.dt))
-    return `FPS ${fps.toFixed(1)} | estática ${media(this.estatica).toFixed(2)} ms | rastro ${media(this.rastro).toFixed(2)} ms | dinâmica ${media(this.dinamica).toFixed(2)} ms | total ${media(this.total).toFixed(2)} ms`
+    // Pausado, os intervalos são praticamente nulos, e dividir por eles
+    // anunciaria um milhão de quadros por segundo. Sem quadro medido não há
+    // taxa a informar.
+    const intervalo = media(this.dt)
+    const fps = intervalo >= 1e-4 ? (1 / intervalo).toFixed(1) : '--'
+    return `FPS ${fps} | estática ${media(this.estatica).toFixed(2)} ms | rastro ${media(this.rastro).toFixed(2)} ms | dinâmica ${media(this.dinamica).toFixed(2)} ms | total ${media(this.total).toFixed(2)} ms`
   }
 }
 
@@ -74,6 +78,7 @@ function construirOpcoes(store: Store): OpcoesCena {
   }
   return {
     zoom: store.numero('zoom'),
+    penduloFoco: store.numero('penduloFoco'),
     exibirEvoluta: store.booleano('exibirEvoluta'),
     exibirInvoluta: store.booleano('exibirInvoluta'),
     transferidor: store.booleano('transferidor'),

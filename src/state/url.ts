@@ -1,3 +1,4 @@
+import { analisarChave, ehChaveDeAcoplamento } from './indices.js'
 /**
  * Estado serializado no fragmento do endereço (contrato `estado-url.md`).
  *
@@ -21,6 +22,8 @@ export interface AvisoUrl {
 
 export interface ResultadoLeitura {
   readonly valores: Record<string, ValorParametro>
+  /** Sobreposições e acoplamentos por pêndulo, fora do catálogo (RF-156). */
+  readonly indexados: Record<string, ValorParametro>
   readonly extras: Readonly<Record<string, string>>
   readonly avisos: readonly AvisoUrl[]
   readonly versaoLida: number
@@ -68,6 +71,12 @@ export function serializar(store: Store, extras: Readonly<Record<string, string>
     partes.push(`${p.id}=${serializarValor(naoPadrao[p.id] as ValorParametro)}`)
   }
 
+  // Estado indexado: só entra quando algum parâmetro está desacoplado, de modo
+  // que o endereço de um pêndulo único continua exatamente como era (RF-156).
+  for (const [chave, valor] of Object.entries(store.estadoIndexadoNaoPadrao())) {
+    partes.push(`${encodeURIComponent(chave)}=${serializarValor(valor)}`)
+  }
+
   const texto = partes.join('&')
   return texto.length > LIMITE_CARACTERES ? `v=${VERSAO_FORMATO}&z=${comprimir(texto)}` : texto
 }
@@ -82,10 +91,11 @@ export function serializar(store: Store, extras: Readonly<Record<string, string>
 export function desserializar(fragmento: string): ResultadoLeitura {
   const avisos: AvisoUrl[] = []
   const valores: Record<string, ValorParametro> = {}
+  const indexados: Record<string, ValorParametro> = {}
   const extras: Record<string, string> = {}
 
   const limpo = fragmento.replace(/^#/, '').trim()
-  if (limpo === '') return { valores, extras, avisos, versaoLida: VERSAO_FORMATO }
+  if (limpo === '') return { valores, indexados, extras, avisos, versaoLida: VERSAO_FORMATO }
 
   let pares = limpo.split('&').filter((p) => p !== '')
   let versaoLida = VERSAO_FORMATO
@@ -133,6 +143,25 @@ export function desserializar(fragmento: string): ResultadoLeitura {
       continue
     }
 
+    // Estado indexado: `L#2` e `#acoplado#L`. Não passa pelo catálogo, porque
+    // a chave não é um parâmetro — é um parâmetro mais um pêndulo (RF-156).
+    if (ehChaveDeAcoplamento(chave)) {
+      indexados[chave] = bruto === 'false' ? false : true
+      continue
+    }
+    const analisada = analisarChave(chave)
+    if (analisada.indice !== null) {
+      const alvo = POR_ID.get(analisada.id)
+      if (alvo === undefined) {
+        avisos.push({ chave, mensagem: `Parâmetro desconhecido ignorado: "${chave}".` })
+      } else {
+        const numero = Number(bruto)
+        if (Number.isFinite(numero)) indexados[chave] = numero
+        else avisos.push({ chave, mensagem: `Valor indexado inválido ignorado: "${chave}".` })
+      }
+      continue
+    }
+
     const def = POR_ID.get(chave)
     if (def === undefined) {
       avisos.push({ chave, mensagem: `Parâmetro desconhecido ignorado: "${chave}".` })
@@ -164,12 +193,12 @@ export function desserializar(fragmento: string): ResultadoLeitura {
     }
   }
 
-  return { valores, extras, avisos, versaoLida }
+  return { valores, indexados, extras, avisos, versaoLida }
 }
 
 /** Lê um fragmento e aplica ao store, devolvendo os avisos acumulados. */
 export function aplicarAoStore(store: Store, fragmento: string): readonly AvisoUrl[] {
-  const { valores, extras, avisos } = desserializar(fragmento)
+  const { valores, indexados, extras, avisos } = desserializar(fragmento)
   const acumulados: AvisoUrl[] = [...avisos]
 
   store.emLote(() => {
@@ -180,6 +209,9 @@ export function aplicarAoStore(store: Store, fragmento: string): readonly AvisoU
       }
     }
   })
+  // Depois dos valores base: uma sobreposição é lida contra o L e o modo já
+  // aplicados, e aplicá-la antes a validaria contra limites que ainda mudariam.
+  if (Object.keys(indexados).length > 0) store.aplicarEstadoIndexado(indexados)
   if (extras['t'] !== undefined) {
     const tempo = Number(extras['t'])
     const resultado = store.atualizarTempoSimulacao(tempo, true)

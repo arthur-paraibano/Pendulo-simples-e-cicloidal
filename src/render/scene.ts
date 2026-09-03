@@ -1,7 +1,7 @@
 import { desenharFacesETrajetoria, desenharFioCicloidal, geometriaCicloidal } from './cycloid-face.js'
 import { desenharInstrumentosEstaticos, desenharVetores } from './instruments.js'
 import type { CamadasCanvas } from './layers.js'
-import { ControladorPaleta, type PaletaCena } from './palette.js'
+import { corDoPendulo, ControladorPaleta, type PaletaCena } from './palette.js'
 import { desenharSensorZero } from './sensor-marker.js'
 import { RastroDePeriodo, RastroIncremental } from './trace.js'
 import { calcularVistas, type VistaCena } from './transform.js'
@@ -254,15 +254,16 @@ export class RenderizadorCena {
     }
     const pendulos = this.pendulosComVista
     let quantidadePendulos = 0
+    // Há uma vista por modo, e **todos** os pêndulos daquele modo dividem esse
+    // painel. Parar no primeiro — como se fazia — tornava n_p > 1 invisível, e
+    // com ele a tautocronia, que só se demonstra com várias massas na mesma
+    // face partindo de alturas diferentes (RF-159).
     for (const vista of this.vistas) {
-      let estado: EstadoPenduloCena | undefined
       for (const candidato of quadro.pendulos) {
-        if (candidato.modo === vista.modo) { estado = candidato; break }
-      }
-      if (estado !== undefined) {
+        if (candidato.modo !== vista.modo) continue
         const item = pendulos[quantidadePendulos]
-        if (item === undefined) pendulos.push({ vista, estado })
-        else { item.vista = vista; item.estado = estado }
+        if (item === undefined) pendulos.push({ vista, estado: candidato })
+        else { item.vista = vista; item.estado = candidato }
         quantidadePendulos += 1
       }
     }
@@ -284,7 +285,7 @@ export class RenderizadorCena {
     this.chaveEfeitos = chaveEfeitos
     let chave = `${largura}|${altura}|${quadro.visualizacao}|${quadro.opcoes.zoom}|${Number(quadro.opcoes.grade.ligada)}|${quadro.opcoes.grade.espacamento}`
     chave += `|${Number(quadro.opcoes.transferidor)}${Number(quadro.opcoes.regua)}${Number(quadro.opcoes.linhaVertical)}${Number(quadro.opcoes.arcoAmplitude)}`
-    for (const item of pendulos) chave += `|${item.estado.modo}:${item.estado.L}:${item.estado.alphaInicial}`
+    for (const item of pendulos) chave += `|${item.estado.id}:${item.estado.L}:${item.estado.alphaInicial}`
     if (chave !== this.chaveEstatica) {
       this.chaveEstatica = chave
       this.estaticaInvalida = true
@@ -327,11 +328,32 @@ export class RenderizadorCena {
     contexto.clearRect(0, 0, largura, altura)
     contexto.fillStyle = paleta.fundo
     contexto.fillRect(0, 0, largura, altura)
+    // O mobiliário do painel — grade, transferidor, régua, face cicloidal e
+    // título — pertence à **vista**, não a cada pêndulo. Desenhá-lo uma vez por
+    // pêndulo empilharia três grades e três rótulos de ângulo no mesmo lugar,
+    // e o ângulo visível acabaria sendo o do último pêndulo desenhado.
+    // O mobiliário mede um pêndulo — o em foco (P113), o mesmo que os painéis
+    // numéricos leem. Mobiliar pelo primeiro faria o transferidor anunciar um
+    // ângulo que não é o do pêndulo sobre o qual o resto da tela fala.
+    const representante = new Map<VistaCena, EstadoPenduloCena>()
     for (const { vista, estado } of pendulos) {
+      const atual = representante.get(vista)
+      if (atual === undefined || estado.indice === quadro.opcoes.penduloFoco) {
+        if (atual === undefined || atual.indice !== quadro.opcoes.penduloFoco) {
+          representante.set(vista, estado)
+        }
+      }
+    }
+    for (const { vista, estado } of pendulos) {
+      const primeiraDaVista = representante.get(vista) === estado
       contexto.save()
       contexto.beginPath()
       contexto.rect(vista.retangulo.x, vista.retangulo.y, vista.retangulo.largura, vista.retangulo.altura)
       contexto.clip()
+      if (!primeiraDaVista) {
+        contexto.restore()
+        continue
+      }
       if (quadro.opcoes.grade.ligada) desenharGrade(contexto, vista, quadro.opcoes.grade.espacamento, paleta)
       this.opcoesInstrumentos.linhaVertical = quadro.opcoes.linhaVertical
       this.opcoesInstrumentos.transferidor = quadro.opcoes.transferidor
@@ -364,7 +386,7 @@ export class RenderizadorCena {
       contexto.restore()
       contexto.restore()
     }
-    if (pendulos.length === 2) {
+    if (this.vistas.length === 2) {
       contexto.save()
       contexto.strokeStyle = paleta.borda
       contexto.beginPath()
@@ -387,7 +409,10 @@ export class RenderizadorCena {
     if (quadro.opcoes.rastroPeriodo) contexto.clearRect(0, 0, largura, altura)
     else this.rastro.atualizarDesvanecimento(contexto, largura, altura, tempo, quadro.opcoes.duracaoRastro)
     for (const { vista, estado } of pendulos) {
-      const cor = estado.modo === 'simples' ? this.paleta.atual.simples : this.paleta.atual.cicloidal
+      const cor = corDoPendulo(
+        estado.modo === 'simples' ? this.paleta.atual.simples : this.paleta.atual.cicloidal,
+        estado.indice,
+      )
       contexto.save()
       contexto.beginPath()
       contexto.rect(vista.retangulo.x, vista.retangulo.y, vista.retangulo.largura, vista.retangulo.altura)
@@ -422,7 +447,10 @@ export class RenderizadorCena {
       contexto.beginPath()
       contexto.rect(vista.retangulo.x, vista.retangulo.y, vista.retangulo.largura, vista.retangulo.altura)
       contexto.clip()
-      const cor = estado.modo === 'simples' ? paleta.simples : paleta.cicloidal
+      const cor = corDoPendulo(
+        estado.modo === 'simples' ? paleta.simples : paleta.cicloidal,
+        estado.indice,
+      )
       const ponto = posicaoMassa(estado)
       if (quadro.opcoes.estroboscopio) {
         this.estroboscopio.atualizar(
@@ -450,7 +478,14 @@ export class RenderizadorCena {
         contexto.stroke()
         contexto.restore()
       } else {
-        desenharFioCicloidal(contexto, vista.transformacao, estado.L, estado.theta, cor)
+        desenharFioCicloidal(
+          contexto,
+          vista.transformacao,
+          estado.L,
+          estado.theta,
+          cor,
+          estado.indice === quadro.opcoes.penduloFoco,
+        )
       }
       desenharPivo(contexto, vista, paleta)
       desenharMassa(contexto, vista, estado, ponto, cor)

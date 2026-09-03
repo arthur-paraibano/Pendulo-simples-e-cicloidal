@@ -1,6 +1,7 @@
 import type { DefinicaoParametro } from '../state/tipos.js'
 import type { ResultadoEscrita, Store } from '../state/store.js'
 import { interpretarEntradaNumerica } from '../state/numeric-input.js'
+import { rotuloIndexado } from '../state/indices.js'
 
 export { avaliarExpressaoNumerica, interpretarEntradaNumerica } from '../state/numeric-input.js'
 export type { ResultadoEntradaNumerica } from '../state/numeric-input.js'
@@ -84,18 +85,46 @@ export function criarParamControl(
   const linha = document.createElement('div')
   linha.className = 'param-entrada'
   linha.append(entrada, unidade, restaurar)
+
+  // Acoplamento (RF-154). Só existe para parâmetros que existem por pêndulo, e
+  // só aparece quando há mais de um pêndulo: com um só, não há o que acoplar.
+  const indexavel = definicao.indexavel === true
+  const acoplamento = document.createElement('button')
+  if (indexavel) {
+    acoplamento.type = 'button'
+    acoplamento.className = 'param-acoplamento'
+    acoplamento.dataset.acoplamento = definicao.id
+    linha.append(acoplamento)
+  }
+
   cabecalho.append(label, linha)
   raiz.append(cabecalho, slider, descricao)
 
   let editando = false
   let destruido = false
+
+  /**
+   * O controle edita **um** pêndulo: o em foco (P113).
+   *
+   * Enquanto o parâmetro está acoplado isso é indistinguível de editar o valor
+   * compartilhado, porque é o mesmo valor. Desacoplado, deixa de ser — e ler de
+   * um pêndulo enquanto se escreve noutro faria o campo mostrar um número que
+   * não é o que ele acabou de definir.
+   */
+  const foco = (): number => (indexavel ? store.numero('penduloFoco') : 1)
+  const lerValor = (): number =>
+    indexavel ? store.numeroDoPendulo(definicao.id, foco()) : store.numero(definicao.id)
+  const escreverValor = (valor: number): ResultadoEscrita =>
+    indexavel
+      ? store.definirIndexado(definicao.id, null, valor)
+      : store.definirParametro(definicao.id, valor)
   // A apresentação pode arredondar (α = 10,11 aparece como 10,1), mas a base
   // usada pelo teclado continua sendo o valor completo armazenado.
-  let valorInterno = store.numero(definicao.id)
+  let valorInterno = lerValor()
   const faixa = (): { min: number; max: number } => store.faixaEfetiva(definicao)
   const atualizar = (): void => {
     if (destruido) return
-    const atual = store.numero(definicao.id)
+    const atual = lerValor()
     valorInterno = atual
     entrada.dataset.valorExato = String(atual)
     const limites = faixa()
@@ -111,7 +140,37 @@ export function criarParamControl(
       entrada.value = formatarValorParametro(atual, definicao)
       entrada.removeAttribute('aria-invalid')
     }
+    if (indexavel) atualizarAcoplamento()
   }
+
+  /** Mostra o regime de edição no próprio rótulo, não só no botão. */
+  function atualizarAcoplamento(): void {
+    const varios = store.numero('numeroPendulos') > 1
+    acoplamento.hidden = !varios
+    const ligado = store.acoplado(definicao.id)
+    const rotulo = rotuloIndexado(definicao.simbolo, varios && !ligado ? foco() : null)
+    label.innerHTML = `<strong>${rotulo}</strong><span>${definicao.nome}</span>`
+    if (!varios) return
+    acoplamento.textContent = ligado ? '\u{1F517}' : '\u2702'
+    acoplamento.setAttribute('aria-pressed', String(ligado))
+    const acao = ligado
+      ? `Desacoplar ${definicao.nome}: cada pêndulo passa a ter o seu valor`
+      : `Acoplar ${definicao.nome}: os pêndulos voltam a compartilhar um valor`
+    acoplamento.title = acao
+    acoplamento.setAttribute('aria-label', acao)
+  }
+
+  const alternarAcoplamento = (): void => {
+    const ligado = store.acoplado(definicao.id)
+    store.definirAcoplamento(definicao.id, !ligado)
+    anunciar(
+      ligado
+        ? `${definicao.simbolo} desacoplado: cada pêndulo tem o seu valor.`
+        : `${definicao.simbolo} acoplado: os pêndulos compartilham um valor.`,
+    )
+    atualizar()
+  }
+  if (indexavel) acoplamento.addEventListener('click', alternarAcoplamento)
   const confirmar = (): boolean => {
     const analise = interpretarEntradaNumerica(entrada.value, definicao)
     if (!analise.valido || analise.valor === undefined) {
@@ -119,7 +178,7 @@ export function criarParamControl(
       anunciar(analise.mensagem ?? `${definicao.simbolo} inválido.`, true)
       return false
     }
-    const resultado = store.definirParametro(definicao.id, analise.valor)
+    const resultado = escreverValor(analise.valor)
     anunciarResultado(resultado, anunciar)
     editando = false
     atualizar()
@@ -136,7 +195,7 @@ export function criarParamControl(
       ? (interpretarEntradaNumerica(entrada.value, definicao).valor ?? valorInterno)
       : valorInterno
     editando = false
-    const resultado = store.definirParametro(definicao.id, base + direcao * passo * multiplicador)
+    const resultado = escreverValor(base + direcao * passo * multiplicador)
     anunciarResultado(resultado, anunciar)
     atualizar()
   }
@@ -156,7 +215,7 @@ export function criarParamControl(
       evento.preventDefault()
       editando = false
       const limites = faixa()
-      anunciarResultado(store.definirParametro(definicao.id, evento.key === 'Home' ? limites.min : limites.max), anunciar)
+      anunciarResultado(escreverValor(evento.key === 'Home' ? limites.min : limites.max), anunciar)
       atualizar()
     } else if (evento.key === 'ArrowUp' || evento.key === 'ArrowDown' || evento.key === 'PageUp' || evento.key === 'PageDown') {
       evento.preventDefault()
@@ -166,7 +225,7 @@ export function criarParamControl(
   }
   const aoSlider = (): void => {
     editando = false
-    const resultado = store.definirParametro(definicao.id, Number(slider.value))
+    const resultado = escreverValor(Number(slider.value))
     anunciarResultado(resultado, anunciar)
   }
   const aoRestaurar = (): void => {

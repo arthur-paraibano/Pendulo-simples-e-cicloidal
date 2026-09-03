@@ -202,7 +202,10 @@ const op = (valor: string, rotulo: string): OpcaoEnum => ({ valor, rotulo })
  * `h` apareceria eternamente como "não padrão" — quebrando tanto a restauração
  * quanto a ida e volta pelo endereço compartilhável.
  */
-const H0_PADRAO = Math.round(((1 * Math.sin((10 * Math.PI) / 180) ** 2) / 2) * 1e9) / 1e9
+// Altura de largada padrão: L = 1 m e α = 10° no modo simples, que é o padrão
+// de MODO. A relação cicloidal daria 0,015077 m — a diferença é pequena aqui,
+// mas é a diferença entre duas geometrias, não um arredondamento (RF-158).
+const H0_PADRAO = Math.round(1 * (1 - Math.cos((10 * Math.PI) / 180)) * 1e9) / 1e9
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Grupo A — Geometria do pêndulo (P01–P10)
@@ -268,6 +271,13 @@ const GEOMETRIA: readonly DefinicaoParametro[] = [
     aliases: ['pendulos'],
     afeta: ['cena'],
   }),
+  inteiro('P113', 'penduloFoco', 'FOCO', 'Pêndulo em foco', 'Qual pêndulo recebe uma atribuição sem índice quando o parâmetro está desacoplado.', 1, 8, 1, 'geometria', 'basico', {
+    aliases: ['foco'],
+    afeta: ['cena'],
+    // Não pode passar de n_p: apontar para um pêndulo inexistente faria uma
+    // atribuição sem índice desaparecer sem erro.
+    limiteDinamico: (v) => ({ max: v.numero('numeroPendulos') }),
+  }),
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -297,13 +307,18 @@ const CICLOIDE: readonly DefinicaoParametro[] = [
     precisao: 3,
     limiteDinamico: (v) => ({ max: v.numero('L') }),
   }),
-  num('P15', 'h0', 'h', 'Altura de largada', 'Altura acima do ponto zero de onde a massa é solta: h = L·sen²θ/2.', 'm', 0, 5, H0_PADRAO, 0.001, 'cicloide', 'basico', {
+  num('P15', 'h0', 'h', 'Altura de largada', 'Altura acima do ponto zero de onde a massa é solta: L(1 − cos α) no simples, L·sen²θ/2 no cicloidal.', 'm', 0, 20, H0_PADRAO, 0.001, 'cicloide', 'basico', {
     aliases: ['altura', 'h'],
     espelhoDe: 'theta0',
     indexavel: true,
     afeta: ['cena', 'periodo'],
     precisao: 4,
-    limiteDinamico: (v) => ({ max: v.numero('L') / 2 }),
+    // O teto é geométrico e muda com o modo: no cicloidal é o topo da face,
+    // 2r = L/2; no simples é a subida no arco até a amplitude máxima (RF-160).
+    limiteDinamico: (v) =>
+      v.texto('modo') === 'simples'
+        ? { max: v.numero('L') * (1 - Math.cos((179.9 * Math.PI) / 180)) }
+        : { max: v.numero('L') / 2 },
   }),
   num('P16', 'aberturaArco', 'ARC', 'Abertura angular do arco desenhado', 'Quanto da face cicloidal aparece na cena.', '°', 0, 360, 360, 1, 'cicloide', 'avancado', {
     aplicavelEm: SO_CICLOIDAL,

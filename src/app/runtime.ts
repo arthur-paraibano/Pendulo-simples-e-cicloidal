@@ -11,6 +11,8 @@ import type { Store } from '../state/store.js'
 
 interface RuntimePendulo {
   readonly modo: ModoPendulo
+  /** Indice do pendulo, de 1 a n_p. */
+  readonly indice: number
   readonly motor: MotorPendulo
   readonly parametros: ParametrosDinamica
   readonly T0: number
@@ -25,7 +27,14 @@ type EstadoPenduloCenaMutavel = { -readonly [K in keyof EstadoPenduloCena]: Esta
 const CHAVES_DINAMICA = new Set([
   'L', 'alpha', 'theta0', 'omega0', 'g', 'm', 'dt', 'integrador', 'modeloAtrito', 'b', 'zeta', 'cq',
   'amplitudeForcamento', 'omegaForcamento', 'faseForcamento',
+  // Criar ou remover um pendulo e estrutural: ha um motor a mais ou a menos.
+  'numeroPendulos',
 ])
+
+/** Chave de um motor: um por (modo, pendulo). */
+function chaveRuntime(modo: ModoPendulo, indice: number): string {
+  return modo + '#' + String(indice)
+}
 
 export interface PassagemRuntime {
   readonly modo: ModoPendulo
@@ -39,8 +48,8 @@ type OuvintePassagem = (passagem: PassagemRuntime) => void
 /** Runtime sem DOM: coordena Store, relógio e os dois motores testavelmente. */
 export class RuntimeCena {
   readonly controle: ControleExecucao
-  private readonly runtimes = new Map<ModoPendulo, RuntimePendulo>()
-  private readonly erros = new Map<ModoPendulo, string>()
+  private readonly runtimes = new Map<string, RuntimePendulo>()
+  private readonly erros = new Map<string, string>()
   private readonly ouvintesPassagem = new Set<OuvintePassagem>()
   private tempoFormula: number
 
@@ -58,30 +67,46 @@ export class RuntimeCena {
   }
 
   get erroVisivel(): string | null {
-    const modo = this.store.texto('modo')
-    if (modo === 'simples') return this.erros.get('simples') ?? null
-    if (modo === 'cicloidal') return this.erros.get('cicloidal') ?? null
-    return this.erros.get('cicloidal') ?? this.erros.get('simples') ?? null
+    for (const modo of [...this.modosVisiveis()].reverse()) {
+      for (const i of this.store.indicesDePendulo()) {
+        const erro = this.erros.get(chaveRuntime(modo, i))
+        if (erro !== undefined) return erro
+      }
+    }
+    return null
   }
 
   temModo(modo: ModoPendulo): boolean {
-    return this.runtimes.has(modo)
+    return this.runtimes.has(chaveRuntime(modo, 1))
   }
 
   tempoDoModo(modo: ModoPendulo): number | null {
-    return this.runtimes.get(modo)?.motor.tempoSolicitado ?? null
+    return this.doModo(modo)?.motor.tempoSolicitado ?? null
+  }
+
+  /**
+   * Motor do pendulo em foco de um modo.
+   *
+   * Paineis que falam de *um* pendulo -- formula, graficos, tabela -- precisam
+   * saber de qual. O foco (P113) e a mesma resposta que o console usa para uma
+   * atribuicao sem indice, e usar duas nocoes diferentes de "o pendulo" faria a
+   * leitura discordar do que a edicao alcanca.
+   */
+  private doModo(modo: ModoPendulo): RuntimePendulo | undefined {
+    const foco = this.store.numero('penduloFoco')
+    return this.runtimes.get(chaveRuntime(modo, foco)) ?? this.runtimes.get(chaveRuntime(modo, 1))
   }
 
   /** Amplitude física corrente, distinta da amplitude inicial configurada. */
   amplitudeDoModo(modo: ModoPendulo): Rad | null {
-    const runtime = this.runtimes.get(modo)
+    const runtime = this.doModo(modo)
     if (runtime === undefined) return null
     if (this.store.texto('fonteMovimento') === 'integracao') {
       const atual = runtime.motor.atual
-      return this.amplitudeEquivalente(runtime.modo, atual.q, atual.qPonto)
+      return this.amplitudeEquivalente(runtime.modo, atual.q, atual.qPonto, runtime.indice)
     }
     const estado = this.estadoHarmonico(runtime, this.tempoFormula)
-    return this.amplitudeEquivalente(runtime.modo, estado.q, estado.qPonto)
+    return this.amplitudeEquivalente(runtime.modo, estado.q, estado.qPonto, runtime.indice)
   }
 
   /** Observa o mesmo sensor fixo que aciona o marcador visual. */
@@ -177,7 +202,7 @@ export class RuntimeCena {
    * gráficos não precisa saber nada sobre a montagem dos motores.
    */
   amostrasDoModo(modo: ModoPendulo): readonly Amostra[] {
-    return this.runtimes.get(modo)?.motor.amostras ?? []
+    return this.doModo(modo)?.motor.amostras ?? []
   }
 
   /**
@@ -195,9 +220,9 @@ export class RuntimeCena {
 
   estadosVisiveis(saida: EstadoPenduloCena[]): EstadoPenduloCena[] {
     saida.length = 0
-    const modo = this.store.texto('modo')
-    if (modo === 'simples' || modo === 'comparacao') this.adicionarEstado('simples', saida)
-    if (modo === 'cicloidal' || modo === 'comparacao') this.adicionarEstado('cicloidal', saida)
+    for (const modo of this.modosVisiveis()) {
+      for (const i of this.store.indicesDePendulo()) this.adicionarEstado(modo, i, saida)
+    }
     return saida
   }
 
@@ -207,10 +232,10 @@ export class RuntimeCena {
     this.ouvintesPassagem.clear()
   }
 
-  private parametrosDinamica(modo: ModoPendulo): ParametrosDinamica {
-    const L = this.store.numero('L')
-    const g = this.store.numero('g')
-    const m = this.store.numero('m')
+  private parametrosDinamica(modo: ModoPendulo, indice: number): ParametrosDinamica {
+    const L = this.store.numeroDoPendulo('L', indice)
+    const g = this.store.numeroDoPendulo('g', indice)
+    const m = this.store.numeroDoPendulo('m', indice)
     return {
       L: metro(L),
       g: mPorS2(g),
@@ -225,18 +250,23 @@ export class RuntimeCena {
     }
   }
 
-  private criarRuntime(modo: ModoPendulo, tempoInicial = this.store.numero('t')): RuntimePendulo {
-    const theta0 = grausParaRad(deg(this.store.numero('theta0')))
-    const parametros = this.parametrosDinamica(modo)
-    const L = metro(this.store.numero('L'))
-    const g = mPorS2(this.store.numero('g'))
-    const alpha = grausParaRad(deg(this.store.numero('alpha')))
+  private criarRuntime(
+    modo: ModoPendulo,
+    indice: number,
+    tempoInicial = this.store.numero('t'),
+  ): RuntimePendulo {
+    const theta0 = grausParaRad(deg(this.store.numeroDoPendulo('theta0', indice)))
+    const parametros = this.parametrosDinamica(modo, indice)
+    const L = metro(this.store.numeroDoPendulo('L', indice))
+    const g = mPorS2(this.store.numeroDoPendulo('g', indice))
+    const alpha = grausParaRad(deg(this.store.numeroDoPendulo('alpha', indice)))
     return {
       modo,
+      indice,
       motor: new MotorPendulo(parametros, theta0, {
         h: this.store.numero('dt'),
         metodo: this.store.texto('integrador') === 'rk4' ? 'rk4' : 'verlet',
-        omegaInicial: this.store.numero('omega0'),
+        omegaInicial: this.store.numeroDoPendulo('omega0', indice),
         tempoInicial,
       }),
       parametros,
@@ -247,20 +277,25 @@ export class RuntimeCena {
     }
   }
 
-  private garantirModo(modo: ModoPendulo, tempoInicial = this.store.numero('t')): void {
-    if (this.runtimes.has(modo)) return
+  private garantirModo(
+    modo: ModoPendulo,
+    indice: number,
+    tempoInicial = this.store.numero('t'),
+  ): void {
+    const chave = chaveRuntime(modo, indice)
+    if (this.runtimes.has(chave)) return
     try {
-      this.runtimes.set(modo, this.criarRuntime(modo, tempoInicial))
-      this.erros.delete(modo)
+      this.runtimes.set(chave, this.criarRuntime(modo, indice, tempoInicial))
+      this.erros.delete(chave)
     } catch (erro) {
-      this.erros.set(modo, erro instanceof Error ? erro.message : 'Configuração dinâmica inválida.')
+      this.erros.set(chave, erro instanceof Error ? erro.message : 'Configuração dinâmica inválida.')
     }
   }
 
   private garantirModosVisiveis(): void {
-    const modo = this.store.texto('modo')
-    if (modo === 'simples' || modo === 'comparacao') this.garantirModo('simples')
-    if (modo === 'cicloidal' || modo === 'comparacao') this.garantirModo('cicloidal')
+    for (const modo of this.modosVisiveis()) {
+      for (const i of this.store.indicesDePendulo()) this.garantirModo(modo, i)
+    }
   }
 
   private reconstruirTodos(zerarTempo: boolean): void {
@@ -268,8 +303,9 @@ export class RuntimeCena {
     this.erros.clear()
     const tempoInicial = zerarTempo ? 0 : this.store.numero('t')
     if (zerarTempo) this.tempoFormula = 0
-    this.garantirModo('simples', tempoInicial)
-    this.garantirModo('cicloidal', tempoInicial)
+    for (const modo of ['simples', 'cicloidal'] as const) {
+      for (const i of this.store.indicesDePendulo()) this.garantirModo(modo, i, tempoInicial)
+    }
     this.sincronizarRelogio()
   }
 
@@ -282,27 +318,29 @@ export class RuntimeCena {
         this.emitirPassagem(
           runtime.modo,
           evento,
-          this.amplitudeEquivalente(runtime.modo, 0, evento.qPonto),
+          this.amplitudeEquivalente(runtime.modo, 0, evento.qPonto, runtime.indice),
         )
       }
-      this.erros.delete(runtime.modo)
+      this.erros.delete(chaveRuntime(runtime.modo, runtime.indice))
     } catch (erro) {
-      this.runtimes.delete(runtime.modo)
-      this.erros.set(runtime.modo, erro instanceof Error ? erro.message : 'Estado físico inválido.')
+      const chave = chaveRuntime(runtime.modo, runtime.indice)
+      this.runtimes.delete(chave)
+      this.erros.set(chave, erro instanceof Error ? erro.message : 'Estado físico inválido.')
     }
   }
 
-  private adicionarEstado(modo: ModoPendulo, saida: EstadoPenduloCena[]): void {
-    const runtime = this.runtimes.get(modo)
+  private adicionarEstado(modo: ModoPendulo, indice: number, saida: EstadoPenduloCena[]): void {
+    const chave = chaveRuntime(modo, indice)
+    const runtime = this.runtimes.get(chave)
     if (runtime === undefined) return
     try {
       saida.push(this.store.texto('fonteMovimento') === 'integracao'
         ? this.estadoIntegrado(runtime)
         : this.estadoFormula(runtime))
-      this.erros.delete(modo)
+      this.erros.delete(chave)
     } catch (erro) {
-      this.runtimes.delete(modo)
-      this.erros.set(modo, erro instanceof Error ? erro.message : 'Estado físico inválido.')
+      this.runtimes.delete(chave)
+      this.erros.set(chave, erro instanceof Error ? erro.message : 'Estado físico inválido.')
     }
   }
 
@@ -328,8 +366,8 @@ export class RuntimeCena {
     readonly qPonto: number
     readonly qDoisPontos: number
   } {
-    const thetaInicial = grausParaRad(deg(this.store.numero('theta0')))
-    const omegaInicial = this.store.numero('omega0')
+    const thetaInicial = grausParaRad(deg(this.store.numeroDoPendulo('theta0', runtime.indice)))
+    const omegaInicial = this.store.numeroDoPendulo('omega0', runtime.indice)
     const omega = (2 * Math.PI) / runtime.periodo
     const fase = omega * tempo
     const q0 = runtime.modo === 'cicloidal' ? Math.sin(thetaInicial) : thetaInicial
@@ -344,8 +382,8 @@ export class RuntimeCena {
   /** Enumera analiticamente todas as raízes no intervalo, mesmo num quadro lento. */
   private emitirTravessiasFormula(runtime: RuntimePendulo, inicio: number, fim: number): void {
     if (!(fim > inicio)) return
-    const thetaInicial = grausParaRad(deg(this.store.numero('theta0')))
-    const omegaInicial = this.store.numero('omega0')
+    const thetaInicial = grausParaRad(deg(this.store.numeroDoPendulo('theta0', runtime.indice)))
+    const omegaInicial = this.store.numeroDoPendulo('omega0', runtime.indice)
     const omega = (2 * Math.PI) / runtime.periodo
     const a = runtime.modo === 'cicloidal' ? Math.sin(thetaInicial) : thetaInicial
     const qPonto0 = runtime.modo === 'cicloidal'
@@ -376,16 +414,21 @@ export class RuntimeCena {
         this.emitirPassagem(
           runtime.modo,
           evento,
-          this.amplitudeEquivalente(runtime.modo, 0, qPonto),
+          this.amplitudeEquivalente(runtime.modo, 0, qPonto, runtime.indice),
         )
       }
       k += 1
     }
   }
 
-  private amplitudeEquivalente(modo: ModoPendulo, q: number, qPonto: number): Rad {
-    const L = this.store.numero('L')
-    const g = this.store.numero('g')
+  private amplitudeEquivalente(
+    modo: ModoPendulo,
+    q: number,
+    qPonto: number,
+    indice = this.store.numero('penduloFoco'),
+  ): Rad {
+    const L = this.store.numeroDoPendulo('L', indice)
+    const g = this.store.numeroDoPendulo('g', indice)
     if (modo === 'cicloidal') {
       const sin2 = q * q + (L * qPonto * qPonto) / g
       return Math.asin(Math.sqrt(Math.min(1, Math.max(0, sin2)))) as Rad
@@ -411,15 +454,20 @@ export class RuntimeCena {
     qDoisPontos: number,
     tempo: number,
   ): EstadoPenduloCena {
-    const L = this.store.numero('L')
-    const g = this.store.numero('g')
+    const indice = runtime.indice
+    const L = this.store.numeroDoPendulo('L', indice)
+    const g = this.store.numeroDoPendulo('g', indice)
     const dinamica = runtime.parametros
-    const alpha = grausParaRad(deg(this.store.numero('alpha')))
+    const alpha = grausParaRad(deg(this.store.numeroDoPendulo('alpha', indice)))
     const estado = runtime.estadoCena ??= {} as EstadoPenduloCenaMutavel
-    estado.id = runtime.modo
+    // A identidade precisa distinguir pendulos do mesmo modo: rastro e
+    // estroboscopio sao indexados por ela, e dois pendulos com o mesmo id
+    // compartilhariam a mesma trilha.
+    estado.id = chaveRuntime(runtime.modo, indice)
+    estado.indice = indice
     estado.modo = runtime.modo
     estado.L = L
-    estado.m = this.store.numero('m')
+    estado.m = this.store.numeroDoPendulo('m', indice)
     estado.g = g
     estado.alphaInicial = alpha
     estado.theta = theta

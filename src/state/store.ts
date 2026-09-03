@@ -8,6 +8,15 @@
  */
 
 import type { ValorParametro } from './tipos.js'
+import {
+  analisarChave,
+  chaveAcoplamento,
+  chaveIndexada,
+  ehChaveDeAcoplamento,
+  resolverAlvo,
+  rotuloIndexado,
+  validarIndice,
+} from './indices.js'
 import { encontrarParametro, PARAMETROS, POR_ID, valoresPadrao } from './schema.js'
 import type { DefinicaoParametro, LeitorDeValores } from './tipos.js'
 import {
@@ -22,6 +31,20 @@ import type { ModoPendulo } from '../physics/types.js'
 import type { Rad } from '../physics/units.js'
 
 export type OrigemValor = 'padrao' | 'usuario' | 'preset' | 'url' | 'roteiro' | 'limitado'
+
+/** Escrita indexada, acompanhada da interpretação adotada (RF-153). */
+export interface ResultadoIndexado extends ResultadoEscrita {
+  /** Frase curta dizendo quais pêndulos foram alcançados, e por quê. */
+  readonly explicacao: string
+}
+
+/** Números em mensagens seguem a vírgula decimal, como o resto da interface. */
+function decimal(valor: number): string {
+  return String(valor).replace('.', ',')
+}
+
+/** Parâmetros cuja largada é um único fato físico, reconciliado em conjunto. */
+const TRIO_LARGADA = new Set(['theta0', 'alpha', 'h0'])
 
 /** O que aconteceu ao tentar escrever um parâmetro. */
 export interface ResultadoEscrita {
@@ -68,9 +91,21 @@ export class Store {
   constructor(iniciais: Readonly<Record<string, ValorParametro>> = {}) {
     this.valores = valoresPadrao()
     for (const p of PARAMETROS) this.origens[p.id] = 'padrao'
-    if (Object.keys(iniciais).length > 0) {
-      this.definirVarios(iniciais, 'preset')
+    if (Object.keys(iniciais).length === 0) return
+
+    // Um instantâneo carrega, além dos parâmetros do catálogo, as chaves
+    // compostas do estado indexado. Elas não passam pela validação de novo:
+    // já foram validadas quando escritas, e revalidá-las aqui as submeteria a
+    // limites dinâmicos que dependem de parâmetros ainda não aplicados.
+    const simples: Record<string, ValorParametro> = {}
+    const compostas: Record<string, ValorParametro> = {}
+    for (const [chave, valor] of Object.entries(iniciais)) {
+      const indexada = ehChaveDeAcoplamento(chave) || analisarChave(chave).indice !== null
+      if (indexada) compostas[chave] = valor
+      else simples[chave] = valor
     }
+    if (Object.keys(simples).length > 0) this.definirVarios(simples, 'preset')
+    Object.assign(this.valores, compostas)
   }
 
   // ── Leitura ───────────────────────────────────────────────────────────────
@@ -119,6 +154,44 @@ export class Store {
       if (!iguais(atual, p.padrao)) saida[p.id] = atual as ValorParametro
     }
     return saida
+  }
+
+  /**
+   * Sobreposições e desacoplamentos ativos, para o endereço compartilhável.
+   *
+   * Vem separado de `naoPadrao` porque as chaves não são parâmetros do
+   * catálogo: quem consome precisa saber que está lidando com estado indexado,
+   * e não descobrir isso ao tentar validar um id que não existe.
+   */
+  estadoIndexadoNaoPadrao(): Record<string, ValorParametro> {
+    const saida: Record<string, ValorParametro> = {}
+    for (const p of PARAMETROS) {
+      if (p.indexavel !== true || this.acoplado(p.id)) continue
+      // Espelhos do trio são reconstruídos a partir de θ₀, aqui como no base.
+      if (p.espelhoDe === undefined) saida[chaveAcoplamento(p.id)] = false
+      for (const i of this.indicesDePendulo()) {
+        const chave = chaveIndexada(p.id, i)
+        const valor = this.valores[chave]
+        if (valor !== undefined && p.espelhoDe === undefined) saida[chave] = valor
+      }
+    }
+    return saida
+  }
+
+  /** Aplica um estado indexado vindo de fora, reconciliando cada pêndulo. */
+  aplicarEstadoIndexado(entradas: Readonly<Record<string, ValorParametro>>): void {
+    this.emLote(() => {
+      for (const [chave, valor] of Object.entries(entradas)) {
+        if (ehChaveDeAcoplamento(chave)) {
+          const id = chave.slice(`${'#'}acoplado${'#'}`.length)
+          if (POR_ID.has(id) && valor === false) this.definirAcoplamento(id, false)
+          continue
+        }
+        const { id, indice } = analisarChave(chave)
+        if (indice === null || !POR_ID.has(id)) continue
+        this.definirIndexado(id, indice, valor, 'url')
+      }
+    })
   }
 
   /** Leitor somente-leitura para limites dinâmicos e derivações. */
@@ -191,10 +264,183 @@ export class Store {
   restaurarTudo(): void {
     this.emLote(() => {
       for (const p of PARAMETROS) {
-        if (p.derivado) continue
+        // Espelhos ficam de fora pelo mesmo motivo que não entram em
+        // `naoPadrao`: são reconstruídos a partir do canônico. Restaurá-los
+        // explicitamente deixaria o último espelho da lista sobrescrever θ₀
+        // com o seu próprio arredondamento, e o padrão não voltaria ao padrão.
+        if (p.derivado || p.espelhoDe !== undefined) continue
         this.definirParametro(p.id, p.padrao, 'padrao')
       }
     })
+  }
+
+  // ── Parâmetros indexados por pêndulo (RF-151 a RF-156) ───────────────────
+
+  /** Índices dos pêndulos existentes, de 1 a `n_p`. */
+  indicesDePendulo(): readonly number[] {
+    return Array.from({ length: this.numero('numeroPendulos') }, (_, i) => i + 1)
+  }
+
+  /**
+   * Um parâmetro acoplado tem um valor só, compartilhado por todos os pêndulos.
+   * Todos começam acoplados: um simulador em que `L` significa coisas
+   * diferentes por padrão seria pior que um sem pêndulos múltiplos.
+   */
+  acoplado(id: string): boolean {
+    this.exigirIndexavel(id)
+    return this.valores[chaveAcoplamento(id)] !== false
+  }
+
+  /**
+   * Acopla ou desacopla um parâmetro (RF-154).
+   *
+   * Desacoplar semeia as sobreposições com o valor compartilhado, e acoplar
+   * as descarta. Nos dois sentidos a cena não muda de aparência no instante da
+   * troca — mudar o regime de edição não é mudar o experimento.
+   */
+  definirAcoplamento(id: string, acoplado: boolean): void {
+    this.exigirIndexavel(id)
+    // θ₀, α e h descrevem um único fato físico por pêndulo (RF-161). Soltar só
+    // um deles deixaria `h₂` reconciliar o `α` **compartilhado**, e o último
+    // pêndulo escrito imporia o seu ângulo a todos os outros.
+    const grupo = TRIO_LARGADA.has(id) ? [...TRIO_LARGADA] : [id]
+    if (grupo.every((membro) => this.acoplado(membro) === acoplado)) return
+    this.emLote(() => {
+      for (const membro of grupo) {
+        if (acoplado) {
+          for (const i of this.indicesDePendulo()) delete this.valores[chaveIndexada(membro, i)]
+        } else {
+          const base = this.valores[membro] as ValorParametro
+          for (const i of this.indicesDePendulo()) this.valores[chaveIndexada(membro, i)] = base
+        }
+        this.valores[chaveAcoplamento(membro)] = acoplado
+        this.marcar(membro, 'explicita')
+      }
+    })
+  }
+
+  /** Valor bruto que vale para um pêndulo: a sobreposição, ou o compartilhado. */
+  brutoDoPendulo(id: string, indice: number): ValorParametro {
+    if (!POR_ID.has(id)) throw new ErroDeParametro(id, `Parâmetro desconhecido: "${id}".`)
+    const def = POR_ID.get(id)!
+    if (def.indexavel !== true || this.acoplado(id)) return this.valores[id] as ValorParametro
+    return (this.valores[chaveIndexada(id, indice)] ?? this.valores[id]) as ValorParametro
+  }
+
+  numeroDoPendulo(id: string, indice: number): number {
+    const valor = this.brutoDoPendulo(id, indice)
+    if (typeof valor !== 'number') {
+      throw new ErroDeParametro(id, `"${id}" não é numérico.`)
+    }
+    return valor
+  }
+
+  /**
+   * Escreve respeitando o endereçamento indexado (RF-151 a RF-155).
+   *
+   * @param indice índice do pêndulo, ou `null` para a forma sem índice.
+   */
+  definirIndexado(
+    id: string,
+    indice: number | null,
+    valor: unknown,
+    origem: OrigemValor = 'usuario',
+  ): ResultadoIndexado {
+    const def = POR_ID.get(id)
+    if (def === undefined) throw new ErroDeParametro(id, `Parâmetro desconhecido: "${id}".`)
+    if (def.indexavel !== true) {
+      if (indice !== null) {
+        return {
+          ...this.recusa(id, `${def.simbolo} (${def.nome}) não existe por pêndulo, então não aceita índice.`),
+          explicacao: '',
+        }
+      }
+      return { ...this.definirParametro(id, valor, origem), explicacao: '' }
+    }
+
+    const numeroPendulos = this.numero('numeroPendulos')
+    if (indice !== null) {
+      const erro = validarIndice(indice, numeroPendulos)
+      if (erro !== null) return { ...this.recusa(id, erro), explicacao: '' }
+    }
+
+    const alvo = resolverAlvo(indice, {
+      simbolo: def.simbolo,
+      acoplado: this.acoplado(id),
+      numeroPendulos,
+      foco: this.numero('penduloFoco'),
+    })
+
+    if (alvo.escreveBase) {
+      return { ...this.definirParametro(id, valor, origem), explicacao: alvo.explicacao }
+    }
+
+    return this.emLote(() => {
+      if (alvo.desacopla) this.definirAcoplamento(id, false)
+      let ultimo: ResultadoEscrita | null = null
+      for (const i of alvo.indices) ultimo = this.escreverSobreposicao(def, i, valor, origem)
+      return { ...(ultimo ?? this.recusa(id, 'Nenhum pêndulo alcançado.')), explicacao: alvo.explicacao }
+    })
+  }
+
+  private exigirIndexavel(id: string): void {
+    const def = POR_ID.get(id)
+    if (def === undefined) throw new ErroDeParametro(id, `Parâmetro desconhecido: "${id}".`)
+    if (def.indexavel !== true) {
+      throw new ErroDeParametro(id, `${def.simbolo} (${def.nome}) não existe por pêndulo.`)
+    }
+  }
+
+  private recusa(id: string, mensagem: string): ResultadoEscrita {
+    return { id, aplicado: false, valor: this.valores[id] as ValorParametro, mensagem }
+  }
+
+  /** Escreve a sobreposição de um pêndulo, validando como o valor base. */
+  private escreverSobreposicao(
+    def: DefinicaoParametro,
+    indice: number,
+    valor: unknown,
+    origem: OrigemValor,
+  ): ResultadoEscrita {
+    const resultado = this.coagirEValidar(def, valor, rotuloIndexado(def.simbolo, indice))
+    if (!resultado.aplicado) return resultado
+    const chave = chaveIndexada(def.id, indice)
+    if (!iguais(this.valores[chave], resultado.valor)) {
+      this.valores[chave] = resultado.valor
+      this.origens[chave] = resultado.limitadoDe !== undefined ? 'limitado' : origem
+      this.marcar(def.id, 'explicita')
+      // O trio de largada existe por pêndulo, e reconciliá-lo com os valores
+      // do pêndulo 1 desfaria justamente a independência que a tautocronia
+      // precisa demonstrar (RF-159).
+      if (TRIO_LARGADA.has(def.id)) this.sincronizarLargadaDoPendulo(def.id, indice)
+      this.talvezNotificar()
+    }
+    return resultado
+  }
+
+  /** Reconcilia θ₀, α e h de um pêndulo, com os valores dele (RF-158). */
+  private sincronizarLargadaDoPendulo(idAlterado: string, indice: number): void {
+    this.sincronizarTrio(
+      idAlterado,
+      (id) => this.numeroDoPendulo(id, indice),
+      (id, valor) => this.escreverDiretoNoPendulo(id, indice, valor),
+    )
+  }
+
+  private escreverDiretoNoPendulo(id: string, indice: number, valor: number): void {
+    const def = POR_ID.get(id)
+    if (def === undefined) return
+    if (def.indexavel !== true || this.acoplado(id)) {
+      this.escreverDireto(id, valor)
+      return
+    }
+    const { min, max } = this.faixaEfetiva(def)
+    const ajustado = quantizarDerivado(Math.min(max, Math.max(min, valor)))
+    const chave = chaveIndexada(id, indice)
+    if (!iguais(this.valores[chave], ajustado)) {
+      this.valores[chave] = ajustado
+      this.marcar(id, 'derivada')
+    }
   }
 
   // ── Medições ─────────────────────────────────────────────────────────────
@@ -304,7 +550,16 @@ export class Store {
 
   // ── Validação ─────────────────────────────────────────────────────────────
 
-  private coagirEValidar(def: DefinicaoParametro, valor: unknown): ResultadoEscrita {
+  /**
+   * @param rotulo nome a usar nas mensagens. Uma escrita indexada precisa dizer
+   *   `L₁`, e não `L`: o usuário não reconheceria como sua a mensagem que
+   *   nomeia um parâmetro que ele não digitou.
+   */
+  private coagirEValidar(
+    def: DefinicaoParametro,
+    valor: unknown,
+    rotulo: string = def.simbolo,
+  ): ResultadoEscrita {
     if (def.tipo === 'numero' || def.tipo === 'inteiro') {
       const numeroBruto = typeof valor === 'number' ? valor : Number(valor)
       if (!Number.isFinite(numeroBruto)) {
@@ -312,7 +567,7 @@ export class Store {
           id: def.id,
           aplicado: false,
           valor: this.valores[def.id] as ValorParametro,
-          mensagem: `${def.simbolo} (${def.nome}) exige um número; recebeu "${String(valor)}".`,
+          mensagem: `${rotulo} (${def.nome}) exige um número; recebeu "${String(valor)}".`,
         }
       }
 
@@ -324,11 +579,11 @@ export class Store {
       if (limitado < min) {
         limitadoDe = numeroBruto
         limitado = min
-        mensagem = `${def.simbolo} = ${numeroBruto} está abaixo do mínimo; ajustado para ${min}${sufixo(def)}.`
+        mensagem = `${rotulo} = ${decimal(numeroBruto)} está abaixo do mínimo; ajustado para ${decimal(min)}${sufixo(def)}.`
       } else if (limitado > max) {
         limitadoDe = numeroBruto
         limitado = max
-        mensagem = `${def.simbolo} = ${numeroBruto} está acima do máximo; ajustado para ${max}${sufixo(def)}.`
+        mensagem = `${rotulo} = ${decimal(numeroBruto)} está acima do máximo; ajustado para ${decimal(max)}${sufixo(def)}.`
       }
 
       // `precisao` é exclusivamente de apresentação (RF-039). O estado
@@ -421,6 +676,15 @@ export class Store {
       this.escreverDireto('corpoCeleste', corpo)
     }
 
+    // Reduzir a quantidade de pêndulos não pode deixar o foco apontando para um
+    // que deixou de existir: uma atribuição sem índice sumiria sem erro.
+    // As sobreposições dos índices removidos ficam guardadas — descartá-las
+    // faria uma mudança transitória de n_p apagar trabalho do usuário.
+    if (idAlterado === 'numeroPendulos') {
+      const limite = this.numero('numeroPendulos')
+      if (this.numero('penduloFoco') > limite) this.escreverDireto('penduloFoco', limite)
+    }
+
     // θ₀, α e h descrevem um único fato físico: de onde a massa é solta.
     // Qualquer um deles muda — e a troca de modo ou de L, que reposicionam o
     // que é geometricamente possível — reconcilia o trio (Área M).
@@ -439,20 +703,64 @@ export class Store {
    * incoerência voltaria menor, porém viva.
    */
   private sincronizarLargada(idAlterado: string): void {
-    const L = this.numero('L')
+    this.sincronizarTrio(
+      idAlterado,
+      (id) => this.numero(id),
+      (id, valor) => this.escreverDireto(id, valor),
+    )
+  }
+
+  /**
+   * Altura de largada correspondente a uma amplitude, conforme o modo (RF-158).
+   *
+   * As duas relações descrevem geometrias diferentes e **não** são
+   * intercambiáveis: no simples a massa sobe `L(1 − cos α)` ao longo de um arco
+   * de círculo; no cicloidal ela sobe `L·sen²θ/2` ao longo da face, com máximo
+   * `L/2 = 2r` no topo. Usar a segunda no primeiro modo — como se fazia até
+   * aqui — dá 0,015077 m onde o correto é 0,015192 m a 10°.
+   */
+  private alturaDeAmplitude(alphaGraus: number, L: number): number {
+    const alpha = (Math.abs(alphaGraus) * Math.PI) / 180
+    if (this.texto('modo') === 'simples') return L * (1 - Math.cos(alpha))
+    const seno = Math.sin(alpha)
+    return (L * seno * seno) / 2
+  }
+
+  /** Inverte `alturaDeAmplitude`, saturando no máximo geométrico (RF-160). */
+  private amplitudeDeAltura(h: number, L: number): number {
     const grausParaRad = Math.PI / 180
+    if (this.texto('modo') === 'simples') {
+      const cos = Math.min(1, Math.max(-1, 1 - h / L))
+      return Math.acos(cos) / grausParaRad
+    }
+    const razao = Math.min(1, Math.max(0, (2 * h) / L))
+    return Math.asin(Math.sqrt(razao)) / grausParaRad
+  }
+
+  /**
+   * Reconcilia θ₀, α e h de **um** pêndulo, a partir do canônico.
+   *
+   * Recebe o par de acesso em vez de ler o store direto para que o trio do
+   * pêndulo 1 e o de um pêndulo indexado passem exatamente pela mesma física:
+   * duas cópias da reconciliação divergiriam na primeira correção.
+   */
+  private sincronizarTrio(
+    idAlterado: string,
+    ler: (id: string) => number,
+    escrever: (id: string, valor: number) => void,
+  ): void {
+    const L = ler('L')
 
     // Lado de largada preservado: mexer em α não joga a massa para o outro
     // lado sem que isso tenha sido pedido (RF-164).
-    const theta0Atual = this.numero('theta0')
+    const theta0Atual = ler('theta0')
     const lado = theta0Atual < 0 ? -1 : 1
 
     let theta0Alvo: number
     if (idAlterado === 'alpha') {
-      theta0Alvo = lado * Math.abs(this.numero('alpha'))
+      theta0Alvo = lado * Math.abs(ler('alpha'))
     } else if (idAlterado === 'h0') {
-      const razao = Math.min(1, Math.max(0, (2 * this.numero('h0')) / L))
-      theta0Alvo = lado * (Math.asin(Math.sqrt(razao)) / grausParaRad)
+      theta0Alvo = lado * this.amplitudeDeAltura(ler('h0'), L)
     } else {
       theta0Alvo = theta0Atual
     }
@@ -465,15 +773,12 @@ export class Store {
     const limite = Math.min(faixaAlpha.max, defTheta0.max ?? 179.9)
     theta0Alvo = Math.sign(theta0Alvo) * Math.min(Math.abs(theta0Alvo), limite)
 
-    this.escreverDireto('theta0', theta0Alvo)
+    escrever('theta0', theta0Alvo)
 
     // Espelhos, sempre a partir do canônico recém-escrito e em precisão plena.
-    const theta0 = this.numero('theta0')
-    const alpha = Math.abs(theta0)
-    this.escreverDireto('alpha', alpha)
-
-    const seno = Math.sin(alpha * grausParaRad)
-    this.escreverDireto('h0', (L * seno * seno) / 2)
+    const alpha = Math.abs(ler('theta0'))
+    escrever('alpha', alpha)
+    escrever('h0', this.alturaDeAmplitude(alpha, L))
   }
 
   /** Escrita sem revalidar nem re-derivar — usada só pelas derivações. */

@@ -116,6 +116,12 @@ export function desenharFioCicloidal(
   L: number,
   theta: number,
   cor: string,
+  /**
+   * Vários pêndulos dividem o mesmo painel, e os rótulos deles cairiam uns
+   * sobre os outros no meio da face. Anota-se apenas o pêndulo em foco: um
+   * número ilegível informa menos que nenhum.
+   */
+  rotular = true,
 ): GeometriaCicloidal {
   const geometria = geometriaCicloidal(L, theta)
   const pontosEnrolados = amostrarFaceCicloidal(L, 0, theta, 40)
@@ -133,12 +139,14 @@ export function desenharFioCicloidal(
   contexto.beginPath()
   contexto.arc(contato.x, contato.y, 4, 0, 2 * Math.PI)
   contexto.fill()
-  contexto.font = '11px var(--fonte-numerica)'
-  contexto.fillText(
-    `ℓ livre = ${geometria.comprimentoLivre.toFixed(3)} m`,
-    (contato.x + massa.x) / 2 + 6,
-    (contato.y + massa.y) / 2 - 6,
-  )
+  if (rotular) {
+    contexto.font = '11px var(--fonte-numerica)'
+    contexto.fillText(
+      `ℓ livre = ${geometria.comprimentoLivre.toFixed(3)} m`,
+      (contato.x + massa.x) / 2 + 6,
+      (contato.y + massa.y) / 2 - 6,
+    )
+  }
   contexto.restore()
   return geometria
 }
