@@ -23,6 +23,8 @@ import { criarPainelFormula } from './ui/formula.js'
 import { criarTabelaColeta } from './ui/data-table.js'
 import { criarPainelGraficos } from './ui/panels/graficos.js'
 import { criarPainelMedicoes } from './ui/panels/medicoes.js'
+import { criarPainelCenarios } from './ui/panels/cenarios.js'
+import { sincronizarEndereco } from './state/endereco.js'
 
 ;(globalThis as typeof globalThis & { katex: KatexGlobal }).katex = katexRuntime
 
@@ -128,6 +130,7 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const recipienteParametros = document.querySelector<HTMLElement>('#painel-parametros')
   const recipienteGraficos = document.querySelector<HTMLElement>('#graficos')
   const recipienteMedicoes = document.querySelector<HTMLElement>('#medicoes')
+  const recipienteCenarios = document.querySelector<HTMLElement>('#cenarios')
   if (cabecalho !== null) {
     cabecalho.hidden = false
     cabecalho.innerHTML = '<div><strong>Pêndulo</strong><span>Fórmula Completa</span></div><p>Uma fórmula-motor, dois regimes físicos.</p>'
@@ -163,6 +166,16 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     recipienteGraficos === null ? null : criarPainelGraficos(recipienteGraficos, store, runtime)
   const medicoes =
     recipienteMedicoes === null ? null : criarPainelMedicoes(recipienteMedicoes, store, { anunciar })
+  const cenarios =
+    recipienteCenarios === null
+      ? null
+      : criarPainelCenarios(recipienteCenarios, store, {
+          anunciar,
+          telaDaCena: () => camadas.compor(),
+        })
+  // O endereco so passa a ser publicado depois que a URL de entrada ja foi
+  // aplicada: publicar antes reescreveria o estado recebido com o padrao.
+  const endereco = sincronizarEndereco(store)
   const consoleParametros = recipienteParametros === null ? null : criarConsoleParametros(recipienteParametros, store, anunciar)
 
   const atualizarEstadoControles = (): void => {
@@ -243,6 +256,7 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     cena.invalidarDescricao()
     if (reiniciou) cena.reiniciarEfeitos()
     agendador.definirAnimando(runtime.controle.rodando)
+    cenarios?.atualizar()
     solicitarRender()
   })
   const aoMudarVisibilidade = (): void => {
@@ -273,6 +287,8 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     formula?.destruir()
     graficos?.destruir()
     medicoes?.destruir()
+    cenarios?.destruir()
+    endereco.destruir()
     tabela?.destruir()
     consoleParametros?.destruir()
     painel?.destruir()

@@ -19,6 +19,15 @@ export interface Preset {
   readonly origem: 'fabrica' | 'usuario' | 'arquivo'
   readonly visualizacao?: 'simples' | 'cicloidal' | 'ambos'
   readonly parametros: Readonly<Record<string, ValorParametro>>
+  /**
+   * Estado por pendulo: sobreposicoes e desacoplamentos (RF-151 a RF-156).
+   *
+   * Fica separado de `parametros` porque as chaves nao sao ids do catalogo. Sem
+   * isto, um cenario com tres massas em alturas diferentes seria salvo como se
+   * as tres estivessem na mesma altura -- e a ida e volta de RF-099 devolveria
+   * um experimento diferente do que foi guardado.
+   */
+  readonly indexados?: Readonly<Record<string, ValorParametro>>
 }
 
 /**
@@ -63,7 +72,27 @@ export const PRESETS_FABRICA: readonly Preset[] = [
     descricao: 'Três massas soltas de alturas diferentes chegam juntas ao ponto zero.',
     origem: 'fabrica',
     visualizacao: 'cicloidal',
-    parametros: { modo: 'cicloidal', L: 1, g: 9.81, alpha: 45, massasTautocrona: 3, exibirEvoluta: true },
+    parametros: {
+      modo: 'cicloidal',
+      L: 1,
+      g: 9.81,
+      // P18 (massasTautocrona) descreve a mesma coisa que n_p e nunca e lido:
+      // inclui-lo aqui so poluiria o endereco compartilhavel com ruido.
+      numeroPendulos: 3,
+      exibirEvoluta: true,
+      fonteMovimento: 'integracao',
+    },
+    // As tres alturas sao o cenario inteiro: soltas de 0,05 m, 0,2 m e 0,45 m,
+    // as massas chegam juntas ao ponto zero. Sem elas o preset mostraria tres
+    // pendulos identicos, que e o oposto do que a tautocronia demonstra.
+    indexados: {
+      '#acoplado#theta0': false,
+      '#acoplado#alpha': false,
+      '#acoplado#h0': false,
+      'h0#1': 0.05,
+      'h0#2': 0.2,
+      'h0#3': 0.45,
+    },
   },
   {
     versaoEsquema: VERSAO_ESQUEMA_PRESET,
@@ -106,6 +135,7 @@ export function capturarPreset(
   nome: string,
   descricao?: string,
 ): Preset {
+  const indexados = store.estadoIndexadoNaoPadrao()
   return {
     versaoEsquema: VERSAO_ESQUEMA_PRESET,
     id,
@@ -113,6 +143,7 @@ export function capturarPreset(
     ...(descricao !== undefined ? { descricao } : {}),
     origem: 'usuario',
     parametros: store.naoPadrao(),
+    ...(Object.keys(indexados).length > 0 ? { indexados } : {}),
   }
 }
 
@@ -149,6 +180,12 @@ export function aplicarPreset(store: Store, preset: Preset): ResultadoAplicacao 
       const resultado = store.definirParametro(id, valor, 'preset')
       if (resultado.mensagem !== undefined) avisos.push(resultado.mensagem)
       if (resultado.aplicado) aplicados += 1
+    }
+    // Depois dos valores base: uma sobreposicao e validada contra o L e o modo
+    // ja aplicados, e antes deles encostaria em limites que ainda mudariam.
+    if (preset.indexados !== undefined) {
+      store.aplicarEstadoIndexado(preset.indexados)
+      aplicados += Object.keys(preset.indexados).length
     }
   })
 

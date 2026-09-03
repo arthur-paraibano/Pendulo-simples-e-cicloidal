@@ -183,14 +183,23 @@ export function graficoPeriodoPorAmplitude(store: Store, passos = 120): ModeloGr
     })
   }
 
+  // Os pontos medidos entram por último, para ficarem por cima das curvas.
+  const medidos = serieDeMedicoes(store)
+  if (medidos !== null) series.push(medidos)
+
   const alphaAtual = store.numero('alpha')
+  const notaMedicoes =
+    medidos === null
+      ? ''
+      : ` Os ${medidos.pontos.length} ponto(s) medido(s) aparecem sobre as curvas.`
   return {
     id: 'periodo-por-amplitude',
     titulo: 'Período em função da amplitude',
     descricao:
-      modo === 'cicloidal'
+      (modo === 'cicloidal'
         ? 'No pêndulo cicloidal a curva é uma reta horizontal: o período não depende da amplitude.'
-        : 'O período cresce com a amplitude, e a série truncada se descola do valor exato.',
+        : 'O período cresce com a amplitude, e a série truncada se descola do valor exato.') +
+      notaMedicoes,
     eixoX: { rotulo: 'Amplitude α', tipo: 'linear', unidade: '°' },
     eixoY: { rotulo: 'Período T', tipo: 'linear', unidade: 's' },
     series,
@@ -213,6 +222,31 @@ export function graficoPeriodoPorAmplitude(store: Store, passos = 120): ModeloGr
  * ordens de grandeza, e em escala linear tudo abaixo de 1 % vira uma linha
  * colada no eixo.
  */
+/**
+ * Pontos medidos, para sobrepor as curvas teoricas (RF-103).
+ *
+ * E a comparacao que fecha o ciclo do laboratorio: a curva diz o que a teoria
+ * preve, e os pontos dizem o que o sensor viu. Separados em dois paineis, o
+ * usuario teria de fazer essa comparacao de cabeca.
+ */
+export function serieDeMedicoes(store: Store): SerieGrafico | null {
+  const medicoes = store.selecionarMedicoes()
+  if (medicoes.length === 0) return null
+  return {
+    id: 'medicoes',
+    rotulo: `Medido (${medicoes.length})`,
+    cor: 'sensor',
+    forma: 'pontos',
+    traco: 'solido',
+    // Meio periodo e periodo completo nao sao comparaveis com a mesma curva:
+    // normaliza-se para periodo completo, que e o que T(alpha) descreve.
+    pontos: medicoes.map((m) => ({
+      x: Math.abs(m.alphaGraus),
+      y: m.grandeza === 'meioPeriodo' ? m.T * 2 : m.T,
+    })),
+  }
+}
+
 export function graficoErroPorAmplitude(store: Store, passos = 120): ModeloGrafico {
   const N = store.numero('N')
   const modo = modoDoStore(store)

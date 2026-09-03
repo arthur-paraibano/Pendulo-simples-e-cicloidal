@@ -61,6 +61,27 @@ export class CamadasCanvas {
   private arrastandoRegua = false
   private chaveApresentacaoRegua = ''
 
+  /**
+   * Achata as três camadas num único canvas, para a exportação de imagem.
+   *
+   * As camadas existem porque cada uma tem cadência própria de redesenho; a
+   * imagem exportada, porém, é um instante só, e precisa das três empilhadas na
+   * mesma ordem em que a tela as compõe (RF-110).
+   */
+  compor(): HTMLCanvasElement | null {
+    const base = this.estatica.elemento
+    if (base.width === 0 || base.height === 0) return null
+    const destino = document.createElement('canvas')
+    destino.width = base.width
+    destino.height = base.height
+    const contexto = destino.getContext('2d')
+    if (contexto === null) return null
+    for (const camada of [this.estatica, this.rastro, this.dinamica]) {
+      contexto.drawImage(camada.elemento, 0, 0)
+    }
+    return destino
+  }
+
   constructor(readonly recipiente: HTMLElement, opcoes: OpcoesCamadas = {}) {
     recipiente.classList.add('palco-canvas')
     this.estatica = this.criarCamada('estatica')

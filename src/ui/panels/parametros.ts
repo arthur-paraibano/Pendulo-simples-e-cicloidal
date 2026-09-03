@@ -107,7 +107,7 @@ export function criarPainelParametros(
   recipiente.className = 'painel-parametros'
   const titulo = document.createElement('div')
   titulo.className = 'painel-parametros-titulo'
-  titulo.innerHTML = '<div><strong>Parâmetros</strong><small>fonte única: catálogo P01–P112</small></div>'
+  titulo.innerHTML = '<div><strong>Parâmetros</strong><small>fonte única: catálogo P01–P114</small></div>'
   const restaurarTudo = document.createElement('button')
   restaurarTudo.type = 'button'
   restaurarTudo.textContent = 'Restaurar tudo'

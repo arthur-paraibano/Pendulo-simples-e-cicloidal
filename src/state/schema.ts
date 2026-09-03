@@ -612,6 +612,7 @@ const DADOS: readonly DefinicaoParametro[] = [
   outro('P102', 'exportarVideo', 'VID', 'Exportar animação em vídeo', 'Gravação do movimento.', 'acao', '', 'dados', 'avancado'),
   outro('P103', 'arquivoCenario', 'CEN', 'Importar e exportar cenário', 'Arquivo com o estado completo.', 'acao', '', 'dados', 'avancado'),
   bool('P104', 'desafioPlanetaX', 'PX', 'Desafio Planeta X', 'Oculta a gravidade e pede que ela seja descoberta.', false, 'dados', 'basico', { afeta: ['apresentacao'] }),
+  bool('P114', 'desafioSubmetido', 'PXOK', 'Estimativa do desafio submetida', 'Enquanto falso, o valor verdadeiro de g permanece oculto.', false, 'dados', 'basico', { afeta: ['apresentacao'] }),
   outro('P105', 'roteiros', 'ROT', 'Roteiros guiados', 'Sequências de passos com perguntas.', 'texto', '', 'dados', 'avancado'),
 ]
 

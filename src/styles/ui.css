@@ -374,6 +374,43 @@
   font-family: var(--fonte-numerica);
 }
 
+/* ── Cenários, roteiros e exportação (F8) ─────────────────────────────────── */
+
+.painel-cenarios {
+  display: grid;
+  gap: var(--esp-4);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin: var(--esp-3);
+  padding: var(--esp-4);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-grande);
+  background: var(--cor-fundo-elevado);
+}
+
+.painel-cenarios > h2 { grid-column: 1 / -1; margin: 0; }
+.cenarios-bloco { display: flex; flex-direction: column; gap: var(--esp-2); }
+.cenarios-bloco h3 { margin: 0; font-size: var(--tam-texto-grande); }
+.cenarios-acoes { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
+.cenarios-descricao,
+.roteiro-passo-titulo { margin: 0; color: var(--cor-texto-suave); font-size: var(--tam-texto-pequeno); }
+.roteiro-passo-titulo { font-weight: 600; color: var(--cor-texto); }
+.roteiro-pergunta { margin: 0; font-style: italic; }
+
+.cenarios-aviso {
+  grid-column: 1 / -1;
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--cor-acento);
+  font-size: var(--tam-texto-pequeno);
+}
+
+.cenarios-veredito { margin: 0; font-family: var(--fonte-numerica); }
+.cenarios-veredito[data-acertou='true'] { color: var(--cor-confianca-excelente); }
+.cenarios-veredito[data-acertou='false'] { color: var(--cor-confianca-inadequada); }
+
+.painel-cenarios input[type='text'],
+.painel-cenarios select { min-height: 36px; }
+
 /* ── Acoplamento por parâmetro (F5b) ──────────────────────────────────────── */
 
 .param-acoplamento {
