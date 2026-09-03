@@ -13,6 +13,14 @@ $$T = 2\pi\sqrt{\frac{L}{g}}\left(1 + \frac{1}{4}\operatorname{sen}^2\left(\frac
 
 ---
 
+## Usar agora
+
+| Como | Onde |
+|---|---|
+| **No navegador** | <https://arthur-paraibano.github.io/Pendulo-simples-e-cicloidal/> |
+| **Offline, sala de aula** | [`pendulo-simulador.html`](pendulo-simulador.html) — 580 kB, um arquivo só: baixe, dê duplo clique. Sem servidor, sem internet, sem instalação. |
+| **Do código** | `npm ci` e depois `npm run dev` (Node ≥ 22.12) |
+
 ## A ideia central: uma fórmula, dois pêndulos
 
 A mesma expressão gera os dois regimes — muda apenas se os termos de correção estão acesos:
@@ -141,3 +149,23 @@ tem de funcionar assim mesmo — é o teste que prova o RNF-011, em vez de afirm
   escrita em [research.md](specs/001-pendulo-formula-completa/research.md).
 - **Tradução completa da interface**. Cabeçalho, controles da cena e texto de estado trocam de idioma;
   o catálogo de parâmetros e os painéis seguem em português.
+
+---
+
+## Licença
+
+**Código e documentação deste repositório: [MIT](LICENSE).** Use, adapte, traduza, projete em sala,
+publique a sua versão — preservar o aviso de copyright é a única exigência.
+
+**O que a licença não cobre**, porque não é meu para licenciar:
+
+| Material | Situação |
+|---|---|
+| `vendor/katex/` | KaTeX 0.18.4, © Khan Academy — MIT, preservada em [`vendor/katex/LICENSE`](vendor/katex/LICENSE), com a proveniência auditável em [`PROVENANCE.md`](vendor/katex/PROVENANCE.md) |
+| `mhd_zykloidenpendel.pdf` | Roteiro de experimento de terceiros, incluído como fonte de aceite do modo cicloidal. Direitos do autor original. |
+| `formula *.jpeg` | Imagens de fórmula fornecidas como material de origem. Direitos de quem as produziu. |
+
+Valores planetários e o desafio "Planeta X" seguem o [PhET Pendulum Lab](https://phet.colorado.edu/en/simulations/pendulum-lab)
+(University of Colorado Boulder, CC BY 4.0); o traçado da evoluta segue o
+[applet de Rafael Losada Liste](https://www.geogebra.org/m/ymbbprbw). A lista completa está em
+[docs/referencias.md](docs/referencias.md) e no painel **Créditos e fontes** da própria aplicação.
