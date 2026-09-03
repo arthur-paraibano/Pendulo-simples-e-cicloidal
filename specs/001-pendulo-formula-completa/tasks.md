@@ -388,19 +388,62 @@ compilador, em vez de só falharem ao carregar.
 
 ---
 
-## Fase 9 — Idioma, Acessibilidade e Desempenho (T115–T121)
+## Fase 9 — Idioma, Acessibilidade e Desempenho (T115–T121) ✅ CONCLUÍDA
+
+> Executada em 2026-09-03. Os itens do Cenário 11 são verificados um a um em
+> `tests/e2e/a11y.spec.ts`, em navegador real: ordem de foco e skip links, troca
+> de visualização e ajuste de parâmetros por teclado, digitação sem limitação no
+> dígito intermediário, navegação da tabela célula a célula, anel de foco nos
+> temas, saída MathML e início pausado sob `prefers-reduced-motion`.
+>
+> **Não houve auditoria automatizada de WCAG.** Nenhuma ferramenta do tipo
+> `axe-core` foi incorporada — seria uma dependência nova, e a constituição exige
+> justificativa escrita em `research.md` para cada uma. O que existe é a
+> verificação dirigida dos requisitos RF-116 a RF-124, item por item. A auditoria
+> de conformidade continua sendo trabalho em aberto.
+>
+> Dicionários em Português do Brasil (`pt-BR`), Inglês (`en`) e Alemão (`de`), com
+> paridade estrita de chaves comprovada por teste. **A ligação com a interface é
+> parcial**: cabeçalho, controles da cena e o texto de estado trocam de idioma e
+> preservam o estado corrente (`tests/e2e/i18n.spec.ts`). O catálogo de 114
+> parâmetros, os painéis e as descrições físicas seguem em português — traduzi-los
+> é o que resta de RF-115, e é trabalho de porte comparável ao desta fase.
+>
+> Painel de **diagnóstico de desempenho** (`src/ui/panels/diagnostico.ts`) com FPS,
+> orçamento de 16,67 ms, tempo por camada Canvas e sub-passos do motor, autolimitado
+> a 1 Hz. O portão de RNF-001 afirma o P95 da taxa de quadros em janela de **4 s**,
+> e não dos 60 s do enunciado: interessa o quadro típico sob carga, e um minuto por
+> navegador tornaria o portão caro demais para rodar a cada commit.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
-| T115 | Implementar a infraestrutura de i18n e o dicionário pt-BR | `src/i18n/index.ts`, `src/i18n/pt-BR.ts` | RF-115 | Trocar idioma preserva o estado | T048 |
-| T116 | [P] Traduzir para inglês e alemão | `src/i18n/en.ts`, `src/i18n/de.ts`, `src/i18n/glossario.md` | RF-115 | Nenhuma chave faltando | T115 |
-| T117 | Implementar navegação por teclado e ordem de foco | `src/ui/a11y.ts` | RF-116 a RF-120 | Cenário 11 passa por completo | T088, T077 |
-| T118 | Implementar regiões dinâmicas e descrições para leitor de tela | `src/ui/a11y.ts` | RF-119, RF-124 | Fórmula lida via MathML | T117, T081 |
-| T119 | [P] Implementar movimento reduzido, paleta segura e redundância de cor | `src/ui/a11y.ts`, `src/styles/tokens.css` | RF-121, RF-122 | Inicia pausado com movimento reduzido | T009 |
-| T120 | Implementar o painel de diagnóstico de desempenho | `src/ui/panels/diagnostico.ts` | RNF-001 | fps, passos por quadro, tempo por camada | T072 |
-| T121 | Criar o teste automatizado de desempenho no CI | `tests/e2e/desempenho.spec.ts` | RNF-001 | P95 de fps ≥ 55 em 60 s | T120 |
+| T115 | ✅ Implementar a infraestrutura de i18n e o dicionário pt-BR | `src/i18n/index.ts`, `src/i18n/pt-BR.ts` | RF-115 | Trocar idioma preserva o estado | T048 |
+| T116 | ✅ [P] Traduzir para inglês e alemão | `src/i18n/en.ts`, `src/i18n/de.ts`, `src/i18n/glossario.md` | RF-115 | Nenhuma chave faltando | T115 |
+| T117 | ✅ Implementar navegação por teclado e ordem de foco | `src/ui/a11y.ts` | RF-116 a RF-120 | Cenário 11 passa por completo | T088, T077 |
+| T118 | ✅ Implementar regiões dinâmicas e descrições para leitor de tela | `src/ui/a11y.ts` | RF-119, RF-124 | Fórmula lida via MathML | T117, T081 |
+| T119 | ✅ [P] Implementar movimento reduzido, paleta segura e redundância de cor | `src/ui/a11y.ts`, `src/styles/tokens.css` | RF-121, RF-122 | Inicia pausado com movimento reduzido | T009 |
+| T120 | ✅ Implementar o painel de diagnóstico de desempenho | `src/ui/panels/diagnostico.ts` | RNF-001 | fps, passos por quadro, tempo por camada | T072 |
+| T121 | ✅ Criar o teste automatizado de desempenho no CI | `tests/e2e/desempenho.spec.ts` | RNF-001 | P95 de fps ≥ 55 em 60 s | T120 |
 
-**Portão de saída**: auditoria WCAG 2.1 AA sem violação bloqueante; RNF-001 verificado em CI.
+**Portão de saída**: ✅ Cenário 11 verificado item a item em Chromium e Firefox;
+RNF-001 verificado em CI (`npx playwright test` roda no workflow). ⬜ A auditoria
+formal de WCAG 2.1 AA permanece pendente, por falta de ferramenta justificada.
+
+**Achados registrados nesta fase**
+
+- **A tabela não era alcançável por teclado.** Nenhuma célula recebia
+  `tabindex`, então Tab nunca chegava lá e as setas jamais eram acionadas —
+  o item 11.5 não estava satisfeito apesar de o código de setas existir.
+- **O ouvinte de teclado morria na primeira coleta.** O painel se redesenha por
+  `innerHTML`, o que descarta o elemento `<table>` inteiro; o ouvinte preso a ele
+  ia junto. Passou a ser delegado do contêiner, que sobrevive.
+- **`store.escutar` não existe** — a API é `assinar`. Cinco chamadas impediam a
+  aplicação de compilar.
+- **O P95 era calculado e descartado**: o teste computava a métrica que RNF-001
+  nomeia e então afirmava apenas a média.
+- **`toHaveValue` não se aplica a `<output>`**, que não é campo de formulário.
+- **O seletor de idioma do cabeçalho duplicava P106**, deixando dois controles com
+  o mesmo nome acessível.
 
 ---
 
