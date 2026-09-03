@@ -1,0 +1,173 @@
+# Pêndulo — Fórmula Completa
+
+*Read this in [English](README.md).*
+
+Spec Kit de um simulador web didático que demonstra **visualmente** a fórmula geral do período do
+pêndulo, com um catálogo amplo de parâmetros configuráveis por valor digitado.
+
+```
+                        ⎛       1        ⎛ α ⎞      9       ⎛ α ⎞ ⎞
+        T  =  2π √(L/g) ⎜ 1  +  ─ · sen² ⎜ ─ ⎟  +  ──  sen⁴ ⎜ ─ ⎟ ⎟
+                        ⎝       4        ⎝ 2 ⎠     64       ⎝ 2 ⎠ ⎠
+```
+
+$$T = 2\pi\sqrt{\frac{L}{g}}\left(1 + \frac{1}{4}\operatorname{sen}^2\left(\frac{\alpha}{2}\right) + \frac{9}{64}\operatorname{sen}^4\left(\frac{\alpha}{2}\right)\right)$$
+
+---
+
+## Usar agora
+
+| Como | Onde |
+|---|---|
+| **No navegador** | <https://arthur-paraibano.github.io/Simple-and-cycloidal-pendulum/> |
+| **Offline, sala de aula** | [`pendulo-simulador.html`](pendulo-simulador.html) — 580 kB, um arquivo só: baixe, dê duplo clique. Sem servidor, sem internet, sem instalação. |
+| **Do código** | `npm ci` e depois `npm run dev` (Node ≥ 22.12) |
+
+## A ideia central: uma fórmula, dois pêndulos
+
+A mesma expressão gera os dois regimes — muda apenas se os termos de correção estão acesos:
+
+| | Pêndulo **simples** | Pêndulo **cicloidal** |
+|---|---|---|
+| Termos com `n ≥ 1` | **ativos** | **anulados** |
+| Período | cresce com a amplitude | `T = 2π√(L/g)`, constante |
+| Com `L = 1 m` e `α = 10°` | `2,009893 s` | `2,006067 s` |
+| Com `L = 1 m` e `α = 45°` | `2,085562 s` | `2,006067 s` |
+| Com `L = 1 m` e `α = 90°` | `2,327351 s` | `2,006067 s` |
+| Propriedade | anarmônico | **isócrono / tautócrono** |
+
+No pêndulo cicloidal, a massa é obrigada a percorrer uma cicloide: o comprimento livre do fio
+encurta como `L·cos θ` e compensa exatamente o efeito que faria o período crescer. É a tautocronia
+de Huygens — e é o que o roteiro experimental alemão demonstra na bancada.
+
+**A consequência prática**, que a tabela de coleta do simulador torna visível linha a linha: quem
+mede um pêndulo simples a 45° e infere a gravidade pela fórmula de pequenos ângulos obtém
+`g = 9,07` em vez de `9,81` — erro de 7,5 % que **nenhum instrumento melhor corrige**, porque é erro
+de modelo. No pêndulo cicloidal, a mesma medição devolve `9,81` em qualquer amplitude.
+
+---
+
+## O que o simulador faz
+
+- **Três visualizações**: Simples · Cicloidal · Ambos lado a lado.
+- **A fórmula sob a cena**, viva: cada termo mostra seu valor e sua contribuição em tempo real,
+  acendendo e apagando conforme o modo.
+- **Tabela de coleta sob a fórmula**, alimentada por um **sensor fixo no ponto zero**, registrando
+  o **período `T`** e a **gravidade `g`** inferida — com a coluna do `g` ingênuo ao lado, para
+  expor o erro de modelo.
+- **114 parâmetros configuráveis**, cada um com símbolo, campo numérico editável, unidade, faixa,
+  passo, slider e reset — mais um console onde se digita `α = 10` diretamente, com notação
+  indexada por pêndulo (`L₁`, `h₂`) quando há mais de um corpo em cena.
+- Instrumentos de medição, gráficos científicos, presets, roteiros guiados, exportação em CSV e
+  estado compartilhável por endereço.
+
+---
+
+## Índice do Spec Kit
+
+| Artefato | Conteúdo |
+|---|---|
+| [.specify/memory/constitution.md](.specify/memory/constitution.md) | Os 10 princípios inegociáveis, restrições técnicas, portões de qualidade e governança |
+| [specs/001-pendulo-formula-completa/spec.md](specs/001-pendulo-formula-completa/spec.md) | **O QUE e POR QUÊ**: 16 histórias de usuário, 160 requisitos funcionais, 23 não funcionais, catálogo de 114 parâmetros |
+| [specs/001-pendulo-formula-completa/plan.md](specs/001-pendulo-formula-completa/plan.md) | **COMO**: stack, decisões de arquitetura, estrutura de código, wireframe da tela, fases |
+| [specs/001-pendulo-formula-completa/research.md](specs/001-pendulo-formula-completa/research.md) | Dedução da fórmula, **tabelas numéricas de referência verificadas**, teardown do PhET e do GeoGebra |
+| [specs/001-pendulo-formula-completa/data-model.md](specs/001-pendulo-formula-completa/data-model.md) | Entidades, invariantes, máquina de estados, regras de derivação e serialização |
+| [specs/001-pendulo-formula-completa/contracts/](specs/001-pendulo-formula-completa/contracts/) | Contratos do motor de física, do estado, do preset (JSON Schema), da URL e do CSV |
+| [specs/001-pendulo-formula-completa/quickstart.md](specs/001-pendulo-formula-completa/quickstart.md) | Como rodar e **13 cenários de validação com os números esperados** |
+| [specs/001-pendulo-formula-completa/tasks.md](specs/001-pendulo-formula-completa/tasks.md) | **130 tarefas** numeradas, com dependências, paralelismo e rastreabilidade |
+| [docs/notas-de-fisica.md](docs/notas-de-fisica.md) | O que o simulador calcula e por quê: série, AGM, tautocronia, integradores, erro de modelo |
+| [docs/referencias.md](docs/referencias.md) | Fontes de tudo que a aplicação afirma — e o que ficou deliberadamente de fora |
+
+### Incremento planejado
+
+| Artefato | Conteúdo |
+|---|---|
+| [specs/002-integracao-arduino/spec.md](specs/002-integracao-arduino/spec.md) | 🕓 **Adiado** — leitura de um pêndulo **real** por Arduino com barreira óptica, alimentando a mesma tabela de coleta. 17 requisitos, protocolo serial e análise das rotas possíveis. |
+
+---
+
+## Fontes originais
+
+**Materiais fornecidos**
+
+| Arquivo | Conteúdo |
+|---|---|
+| `formula simples.jpeg` | `T = 2π√(L/g)` — aproximação de pequenos ângulos |
+| `formula completa.jpeg` | `T/T₀ = 1 + ¼sen²(α/2) + (9/64)sen⁴(α/2)` — a razão adimensional |
+| `formula geral.jpeg` | A fórmula-motor completa, que gera os dois pêndulos |
+| `mhd_zykloidenpendel.pdf` | Roteiro de experimento (alemão): pêndulo de 1 m, perfil cicloidal, barreira de luz medindo meio período, osciloscópio |
+
+**Simulações de referência analisadas**
+
+- [PhET Pendulum Lab](https://phet.colorado.edu/sims/html/pendulum-lab/latest/pendulum-lab_en.html)
+  — telas Intro/Energy/Lab, dois pêndulos, presets planetários, atrito, gráfico de energia,
+  Period Timer, Period Trace. **Não mostra a fórmula.**
+- [GeoGebra — Cycloidal Pendulum](https://www.geogebra.org/m/ymbbprbw), de Rafael Losada Liste
+  — tautocronia de Huygens, fio de comprimento `4r` enrolando na evoluta, círculo osculador.
+  **Quase nenhum parâmetro configurável.**
+
+A interseção que nenhuma das duas cobre — fórmula visível e manipulável, os dois regimes na mesma
+expressão, e parâmetros amplamente configuráveis — é este produto.
+
+---
+
+## Fluxo de desenvolvimento
+
+```
+constitution ──▶ specify ──▶ plan ──▶ tasks ──▶ implement
+     ✅            ✅          ✅        ✅          🔨
+```
+
+**Estado atual**: documentação do Spec Kit **concluída**; implementação **concluída** nas dez fases.
+
+| Fase | Entrega | Estado |
+|---|---|---|
+| 0 · Fundação | Vite, TypeScript estrito, regra de dependência no lint, CI | ✅ |
+| 1 · Núcleo de física | Série, AGM, período, aproximações, cicloide, energia | ✅ |
+| 2 · Motor dinâmico | Integradores, sensor do ponto zero, inferência de `g` | ✅ |
+| 3 · Estado | Os 114 parâmetros, store, URL, presets, console | ✅ |
+| 4 · Cena | Canvas em três camadas, faces cicloidais, instrumentos | ✅ |
+| 5 · Fórmula e parâmetros | Fórmula viva em KaTeX, controles, painel de derivados | ✅ |
+| 5b · Parâmetros indexados | `L₁`, `h₂`, acoplar/desacoplar, alturas independentes | ✅ |
+| 6 · Tabela de coleta | A tabela de `T` e `g` sob a fórmula | ✅ |
+| 7 · Gráficos e instrumentos | Sete gráficos, cronômetro e fotoporta móvel | ✅ |
+| 8 · Presets e exportação | Cenários, roteiros, desafio, CSV, imagem e endereço | ✅ |
+| 9 · Idioma e acessibilidade | Dicionários pt-BR/en/de, teclado, movimento reduzido, diagnóstico | ✅ |
+| 10 · Documentação e entrega | Notas físicas, créditos rastreáveis, orientação de primeiro uso, artefato offline | ✅ |
+
+**Como está verificado hoje**: 987 testes unitários (98,9 % de instruções, 94,0 % de ramos); 176
+cenários de ponta a ponta em Chromium e Firefox; build comprimido para Pages e arquivo único offline
+dentro do orçamento. O arquivo único é aberto por `file://` com toda requisição de rede abortada, e
+tem de funcionar assim mesmo — é o teste que prova o RNF-011, em vez de afirmá-lo.
+
+**O que continua em aberto**, registrado em
+[tasks.md](specs/001-pendulo-formula-completa/tasks.md):
+
+- **Publicar no GitHub Pages** depende de habilitar o Pages no repositório, em Settings → Pages, com
+  origem "GitHub Actions". Até lá o job de implantação falha com HTTP 404 — os portões passam, só o
+  destino não existe.
+- **Auditoria formal de WCAG 2.1 AA**. O que existe é verificação dirigida, item a item, em navegador
+  real; nenhuma ferramenta automatizada foi incorporada, porque cada dependência exige justificativa
+  escrita em [research.md](specs/001-pendulo-formula-completa/research.md).
+- **Tradução completa da interface**. Cabeçalho, controles da cena e texto de estado trocam de idioma;
+  o catálogo de parâmetros e os painéis seguem em português.
+
+---
+
+## Licença
+
+**Código e documentação deste repositório: [MIT](LICENSE).** Use, adapte, traduza, projete em sala,
+publique a sua versão — preservar o aviso de copyright é a única exigência.
+
+**O que a licença não cobre**, porque não é meu para licenciar:
+
+| Material | Situação |
+|---|---|
+| `vendor/katex/` | KaTeX 0.18.4, © Khan Academy — MIT, preservada em [`vendor/katex/LICENSE`](vendor/katex/LICENSE), com a proveniência auditável em [`PROVENANCE.md`](vendor/katex/PROVENANCE.md) |
+| `mhd_zykloidenpendel.pdf` | Roteiro de experimento de terceiros, incluído como fonte de aceite do modo cicloidal. Direitos do autor original. |
+| `formula *.jpeg` | Imagens de fórmula fornecidas como material de origem. Direitos de quem as produziu. |
+
+Valores planetários e o desafio "Planeta X" seguem o [PhET Pendulum Lab](https://phet.colorado.edu/en/simulations/pendulum-lab)
+(University of Colorado Boulder, CC BY 4.0); o traçado da evoluta segue o
+[applet de Rafael Losada Liste](https://www.geogebra.org/m/ymbbprbw). A lista completa está em
+[docs/referencias.md](docs/referencias.md) e no painel **Créditos e fontes** da própria aplicação.
