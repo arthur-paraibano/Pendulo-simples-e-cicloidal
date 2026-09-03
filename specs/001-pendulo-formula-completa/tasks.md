@@ -447,13 +447,66 @@ formal de WCAG 2.1 AA permanece pendente, por falta de ferramenta justificada.
 
 ---
 
-## Fase 10 — Documentação e Entrega (T122–T124)
+## Fase 10 — Documentação e Entrega (T122–T124) ✅ CONCLUÍDA
+
+> Executada em 2026-09-03. As notas de física ficam em `docs/notas-de-fisica.md` e
+> as fontes em `docs/referencias.md`, com a mesma lista apresentada dentro da
+> aplicação pelo painel **Créditos e fontes**.
+>
+> O vínculo entre número e procedência é **estrutural**, e não redacional. Cada
+> afirmação numérica carrega o `id` de uma fonte do catálogo
+> (`src/state/creditos.ts`), `afirmacoesSemFonte()` denuncia quem não carregar, e
+> o teste unitário exige lista vazia. As entradas bibliográficas das três
+> aproximações são **derivadas** de `MODELOS_APROXIMACAO`, onde o campo `fonte` já
+> é obrigatório: um modelo novo aparece nos créditos sozinho, e um modelo sem
+> procedência não compila. É o RNF-021 imposto por mecanismo.
+>
+> A orientação de primeiro uso é um **cartão no fluxo da página**, e não um modal.
+> Um modal na abertura roubaria o foco de quem chega pelo teclado e cobriria a
+> cena de quem chega pelo mouse, para dizer três frases que ninguém pediu. Um
+> clique dispensa, a preferência local grava, e ela não volta sozinha (RF-126).
+>
+> O arquivo único offline passou a ser **verificado, e não afirmado**:
+> `tests/e2e/offline.spec.ts` abre `pendulo-simulador.html` por `file://` com toda
+> requisição http(s) abortada, e exercita cena, fórmula, troca de regime e
+> digitação de parâmetro em Chromium e Firefox. Se o pacote esquecer uma fonte ou
+> um script do lado de fora, o teste falha aqui em vez de falhar na aula.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
-| T122 | Escrever as notas de física e a página de créditos com todas as fontes | `docs/notas-de-fisica.md`, `docs/referencias.md`, `src/ui/panels/creditos.ts` | RF-125, RNF-021 | Toda afirmação numérica rastreável | T025 |
-| T123 | Implementar a orientação de primeiro uso, dispensável em um clique | `src/ui/panels/introducao.ts` | RF-126 | Não reaparece automaticamente | T115 |
-| T124 | Gerar e versionar `dist/` e `pendulo-simulador.html`; publicar | `dist/`, `pendulo-simulador.html`, `.github/workflows/pages.yml` | RNF-011 | Arquivo único abre offline com duplo clique e funciona por completo | T005, T121 |
+| T122 | ✅ Escrever as notas de física e a página de créditos com todas as fontes | `docs/notas-de-fisica.md`, `docs/referencias.md`, `src/state/creditos.ts`, `src/ui/panels/creditos.ts` | RF-125, RNF-021 | Toda afirmação numérica rastreável | T025 |
+| T123 | ✅ Implementar a orientação de primeiro uso, dispensável em um clique | `src/state/introducao.ts`, `src/ui/panels/introducao.ts` | RF-126 | Não reaparece automaticamente | T115 |
+| T124 | ✅ Gerar e versionar `dist/` e `pendulo-simulador.html`; publicar | `dist/`, `pendulo-simulador.html`, `.github/workflows/pages.yml`, `tests/e2e/offline.spec.ts` | RNF-011 | Arquivo único abre offline com duplo clique e funciona por completo | T005, T121 |
+
+**Portão de saída**: ✅ Toda afirmação numérica de referência rastreável a uma fonte
+citada na própria aplicação; artefato único verificado por `file://` sem rede, nos
+dois navegadores; `npm run verificar` aprovado. ⬜ **A publicação no GitHub Pages
+depende de uma ação fora do repositório**: o Pages precisa ser habilitado em
+Settings → Pages com origem "GitHub Actions". Enquanto não for, o job `publicar`
+falha com HTTP 404 — o build e os portões passam, só o passo de implantação não
+encontra o destino.
+
+**Achados registrados nesta fase**
+
+- **A orientação empurrou a fórmula para fora da primeira dobra.** O cartão media
+  245 px e ficava acima da cena; em 1366×768 a fórmula passou a começar em
+  y = 842, contra o limite de 768 da Área K. Não foi conflito de opinião entre
+  requisitos: foi altura medida. O cartão foi compactado para 129 px — título e
+  botão na mesma linha, trechos em duas linhas — e a dobra virou teste
+  (`tests/e2e/entrega.spec.ts`), para que o próximo trecho a mais reprove antes de
+  chegar à tela.
+- **`display: flex` na classe vencia o `hidden` do navegador.** O cartão
+  dispensado continuava visível: a regra do autor derrota o `[hidden] { display:
+  none }` da folha do navegador. Precisou de `.painel-introducao[hidden]`
+  explícito. O teste pegou; a inspeção visual não teria.
+- **O Cenário 9.10 do quickstart não estava satisfeito.** Ele pede que cada
+  aproximação exiba sua fonte bibliográfica, e o campo `fonte` existia em
+  `MODELOS_APROXIMACAO` desde a Fase 2 — sem nunca ser exibido em lugar nenhum. O
+  painel de créditos fecha essa lacuna.
+- **Uma afirmação do rascunho das notas estava errada.** O texto dizia que a
+  fórmula de pequenos ângulos erra 1,71 % a 45°; são **−3,84 %** (1,71 % é o erro
+  da série em N = 2 a 90°). Conferido por cálculo independente antes de publicar,
+  junto dos limiares 54,373° / 81,603° / 110,164° e da saturação 89/64.
 
 ---
 

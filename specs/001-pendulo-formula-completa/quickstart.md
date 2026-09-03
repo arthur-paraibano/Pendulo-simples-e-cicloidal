@@ -240,6 +240,21 @@ padrão (botão "Restaurar tudo"). Tolerância de leitura: as casas decimais exi
 | 12.5 | Atrito muito alto | Regime superamortecido; sem cruzamento de zero; sensor não dispara, com explicação |
 | 12.6 | Deixar rodando 1 hora | Memória não cresce mais que 20 % (RNF-020) |
 
+### Cenário 13 — Orientação, créditos e entrega offline
+*(RF-125, RF-126, RNF-011, RNF-021)*
+
+| # | Ação | Resultado esperado |
+|---|---|---|
+| 13.1 | Abrir a aplicação pela primeira vez | Cartão "O que este simulador demonstra" acima da cena, sem cobrir nada |
+| 13.2 | Clicar em "Entendi, começar" | O cartão some; **um** clique basta |
+| 13.3 | Recarregar a página | O cartão **não** volta |
+| 13.4 | Abrir Créditos e fontes | Imagens de fórmula, roteiro alemão, PhET, GeoGebra, Huygens e as três aproximações, cada uma com sua referência |
+| 13.5 | Abrir "De onde vem cada número" | Toda linha tem fonte; nenhuma diz "sem fonte" |
+| 13.6 | Conferir `9,81 m/s²`, `54,373°`, `1,390625` na tabela | São os mesmos valores que a aplicação usa nos parâmetros e nas legendas |
+| 13.7 | Clicar em "Rever a orientação inicial" | O cartão reaparece — a pedido, nunca sozinho |
+| 13.8 | Abrir `pendulo-simulador.html` com duplo clique, sem rede | Cena anima, fórmula renderiza, parâmetros aceitam digitação; nenhuma requisição externa |
+| 13.9 | Verificar a primeira dobra em 1366×768 com o cartão aberto | A fórmula continua começando acima de 768 px |
+
 ---
 
 ## 4. Fixtures de Aceite *(conferência rápida)*

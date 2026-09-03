@@ -63,8 +63,10 @@ de modelo. No pêndulo cicloidal, a mesma medição devolve `9,81` em qualquer a
 | [specs/001-pendulo-formula-completa/research.md](specs/001-pendulo-formula-completa/research.md) | Dedução da fórmula, **tabelas numéricas de referência verificadas**, teardown do PhET e do GeoGebra |
 | [specs/001-pendulo-formula-completa/data-model.md](specs/001-pendulo-formula-completa/data-model.md) | Entidades, invariantes, máquina de estados, regras de derivação e serialização |
 | [specs/001-pendulo-formula-completa/contracts/](specs/001-pendulo-formula-completa/contracts/) | Contratos do motor de física, do estado, do preset (JSON Schema), da URL e do CSV |
-| [specs/001-pendulo-formula-completa/quickstart.md](specs/001-pendulo-formula-completa/quickstart.md) | Como rodar e **12 cenários de validação com os números esperados** |
+| [specs/001-pendulo-formula-completa/quickstart.md](specs/001-pendulo-formula-completa/quickstart.md) | Como rodar e **13 cenários de validação com os números esperados** |
 | [specs/001-pendulo-formula-completa/tasks.md](specs/001-pendulo-formula-completa/tasks.md) | **130 tarefas** numeradas, com dependências, paralelismo e rastreabilidade |
+| [docs/notas-de-fisica.md](docs/notas-de-fisica.md) | O que o simulador calcula e por quê: série, AGM, tautocronia, integradores, erro de modelo |
+| [docs/referencias.md](docs/referencias.md) | Fontes de tudo que a aplicação afirma — e o que ficou deliberadamente de fora |
 
 ### Incremento planejado
 
@@ -106,7 +108,7 @@ constitution ──▶ specify ──▶ plan ──▶ tasks ──▶ implemen
      ✅            ✅          ✅        ✅          🔨
 ```
 
-**Estado atual**: documentação do Spec Kit **concluída**; implementação **em andamento**.
+**Estado atual**: documentação do Spec Kit **concluída**; implementação **concluída** nas dez fases.
 
 | Fase | Entrega | Estado |
 |---|---|---|
@@ -121,13 +123,21 @@ constitution ──▶ specify ──▶ plan ──▶ tasks ──▶ implemen
 | 7 · Gráficos e instrumentos | Sete gráficos, cronômetro e fotoporta móvel | ✅ |
 | 8 · Presets e exportação | Cenários, roteiros, desafio, CSV, imagem e endereço | ✅ |
 | 9 · Idioma e acessibilidade | Dicionários pt-BR/en/de, teclado, movimento reduzido, diagnóstico | ✅ |
-| 10 | Notas físicas, créditos e publicação | ⬜ |
+| 10 · Documentação e entrega | Notas físicas, créditos rastreáveis, orientação de primeiro uso, artefato offline | ✅ |
 
-**Como está verificado hoje**: 964 testes unitários (98,9 % de instruções, 94,0 % de ramos); 158
-cenários de ponta a ponta em Chromium, Firefox e WebKit; build comprimido para Pages e arquivo único
-offline dentro do orçamento, ambos sem requisição externa.
+**Como está verificado hoje**: 987 testes unitários (98,9 % de instruções, 94,0 % de ramos); 176
+cenários de ponta a ponta em Chromium e Firefox; build comprimido para Pages e arquivo único offline
+dentro do orçamento. O arquivo único é aberto por `file://` com toda requisição de rede abortada, e
+tem de funcionar assim mesmo — é o teste que prova o RNF-011, em vez de afirmá-lo.
 
-Para prosseguir, execute as tarefas de [tasks.md](specs/001-pendulo-formula-completa/tasks.md) a
-partir da Fase 10. Cada fase tem um portão de saída verificável, e as tarefas de teste precedem as de
-implementação — as tabelas numéricas de
-[research.md](specs/001-pendulo-formula-completa/research.md) são a fonte de verdade das fixtures.
+**O que continua em aberto**, registrado em
+[tasks.md](specs/001-pendulo-formula-completa/tasks.md):
+
+- **Publicar no GitHub Pages** depende de habilitar o Pages no repositório, em Settings → Pages, com
+  origem "GitHub Actions". Até lá o job de implantação falha com HTTP 404 — os portões passam, só o
+  destino não existe.
+- **Auditoria formal de WCAG 2.1 AA**. O que existe é verificação dirigida, item a item, em navegador
+  real; nenhuma ferramenta automatizada foi incorporada, porque cada dependência exige justificativa
+  escrita em [research.md](specs/001-pendulo-formula-completa/research.md).
+- **Tradução completa da interface**. Cabeçalho, controles da cena e texto de estado trocam de idioma;
+  o catálogo de parâmetros e os painéis seguem em português.
