@@ -222,3 +222,59 @@ describe('ida e volta (o portão da Fase 3)', () => {
     expect(restaurado.texto('presetsUsuario')).toBe('x'.repeat(2500))
   })
 })
+
+describe('URL: estado indexado (RF-156)', () => {
+  const comTres = (): Store => {
+    const s = new Store()
+    s.definirParametro('numeroPendulos', 3)
+    return s
+  }
+
+  it('um pêndulo único não muda o endereço', () => {
+    const s = new Store()
+    expect(serializar(s)).not.toContain('#')
+  })
+
+  it('acoplado, nenhuma sobreposição entra no endereço', () => {
+    const s = comTres()
+    s.definirParametro('L', 2)
+    expect(serializar(s)).not.toContain('%23')
+  })
+
+  it('leva e traz alturas independentes', () => {
+    const origem = comTres()
+    origem.definirParametro('modo', 'cicloidal')
+    for (const [i, h] of [[1, 0.05], [2, 0.2], [3, 0.45]] as const) {
+      origem.definirIndexado('h0', i, h)
+    }
+
+    const destino = new Store()
+    aplicarAoStore(destino, `#${serializar(origem)}`)
+    expect(destino.acoplado('h0')).toBe(false)
+    for (const [i, h] of [[1, 0.05], [2, 0.2], [3, 0.45]] as const) {
+      expect(destino.numeroDoPendulo('h0', i)).toBeCloseTo(h, 6)
+    }
+  })
+
+  it('reconstrói o trio de cada pêndulo a partir do que trouxe', () => {
+    const origem = comTres()
+    origem.definirIndexado('theta0', 2, -40)
+    const destino = new Store()
+    aplicarAoStore(destino, `#${serializar(origem)}`)
+    expect(destino.numeroDoPendulo('theta0', 2)).toBeCloseTo(-40, 6)
+    expect(destino.numeroDoPendulo('alpha', 2)).toBeCloseTo(40, 6)
+    expect(destino.numeroDoPendulo('theta0', 1)).toBeCloseTo(10, 6)
+  })
+
+  it('ignora índice de parâmetro inexistente, avisando', () => {
+    const { avisos, indexados } = desserializar('#v=1&naoexiste%232=3')
+    expect(Object.keys(indexados)).toHaveLength(0)
+    expect(avisos.map((a) => a.mensagem).join(' ')).toContain('desconhecido')
+  })
+
+  it('ignora sobreposição não numérica, avisando', () => {
+    const { avisos, indexados } = desserializar('#v=1&L%232=abc')
+    expect(Object.keys(indexados)).toHaveLength(0)
+    expect(avisos.map((a) => a.mensagem).join(' ')).toContain('inválido')
+  })
+})

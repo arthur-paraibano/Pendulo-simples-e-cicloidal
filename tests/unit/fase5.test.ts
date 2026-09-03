@@ -203,7 +203,7 @@ describe('Fase 5 — grandezas derivadas somente leitura', () => {
       'comprimentoEfetivo', 'energiaCinetica', 'energiaPotencial', 'energiaTermica', 'energiaTotal',
     ]))
     const estado: EstadoPenduloCena = {
-      id: 'simples', modo: 'simples', L: 1, m: 1, g: 9.81, alphaInicial: Math.PI / 6,
+      id: 'simples#1', indice: 1, modo: 'simples', L: 1, m: 1, g: 9.81, alphaInicial: Math.PI / 6,
       theta: 0, qPonto: 1, qDoisPontos: 0, tempo: 1.25, ultimoDisparoSensor: null,
       T0: 2, periodo: 2.1, modeloAtrito: 'nenhum', gamma: 0, cq: 0, aceleracaoExterna: 0,
     }

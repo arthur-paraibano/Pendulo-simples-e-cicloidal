@@ -30,14 +30,14 @@ const paleta: PaletaCena = {
 }
 
 const estado = (modo: 'simples' | 'cicloidal', parcial = {}): EstadoPenduloCena => ({
-  id: modo, modo, L: 1, m: 1, g: 9.81, alphaInicial: Math.PI / 4, theta: 0.3,
+  id: modo, indice: 1, modo, L: 1, m: 1, g: 9.81, alphaInicial: Math.PI / 4, theta: 0.3,
   qPonto: 0.7, qDoisPontos: -2, tempo: 0.4, ultimoDisparoSensor: 0.35,
   T0: 2, periodo: modo === 'simples' ? 2.1 : 2, modeloAtrito: 'viscoso', gamma: 0.2,
   cq: 0.1, aceleracaoExterna: 0.3, ...parcial,
 })
 
 const opcoes: OpcoesCena = {
-  zoom: 1, exibirEvoluta: true, exibirInvoluta: true, transferidor: true, regua: true,
+  zoom: 1, penduloFoco: 1, exibirEvoluta: true, exibirInvoluta: true, transferidor: true, regua: true,
   linhaVertical: true, arcoAmplitude: true, rastro: true, duracaoRastro: 4, rastroPeriodo: false,
   vetorVelocidade: true, vetorAceleracao: true, decomporAceleracao: true,
   vetoresForca: ['peso', 'tracao', 'arrasto', 'externa', 'resultante'], escalaVetores: 1,
@@ -155,6 +155,17 @@ describe('paleta e renderizador composto', () => {
     cena.renderizar({ ...quadro, visualizacao: 'simples', pendulos: [estado('simples')] })
     expect(camadas.limpar).toHaveBeenCalledWith('rastro')
     cena.renderizar({ ...quadro, opcoes: { ...opcoes, zoom: 1.2, rastroPeriodo: true } })
+    // Vários pêndulos do mesmo modo dividem uma vista: o mobiliário do painel
+    // é desenhado uma vez só, e as anotações seguem o pêndulo em foco (RF-159).
+    cena.renderizar({
+      visualizacao: 'cicloidal',
+      pendulos: [
+        estado('cicloidal', { id: 'cicloidal#1', indice: 1, theta: 0.2 }),
+        estado('cicloidal', { id: 'cicloidal#2', indice: 2, theta: 0.5 }),
+        estado('cicloidal', { id: 'cicloidal#3', indice: 3, theta: 0.9 }),
+      ],
+      opcoes: { ...opcoes, penduloFoco: 2 },
+    })
     cena.renderizar({ ...quadro, pendulos: [estado('simples', { tempo: 0.8 })], visualizacao: 'simples' })
     cena.renderizar({
       visualizacao: 'simples',

@@ -55,7 +55,7 @@ describe('Store: validação e limitação', () => {
     // RNF-023: a mensagem precisa conter os três elementos.
     expect(r.mensagem).toContain('α')
     expect(r.mensagem).toContain('500')
-    expect(r.mensagem).toContain('179.9')
+    expect(r.mensagem).toContain('179,9')
   })
 
   it('limita abaixo do mínimo', () => {
@@ -196,14 +196,38 @@ describe('Store: derivações', () => {
   it('h e α são mutuamente determinados, com lado mestre no último editado', () => {
     const s = new Store()
     s.definirParametro('L', 1)
-    // h = L·sen²θ/2: a 90° dá L/2.
+    // No simples a massa sobe pelo arco: h = L(1 − cos α), que a 90° dá L.
     s.definirParametro('alpha', 90)
-    expect(s.numero('h0')).toBeCloseTo(0.5, 3)
+    expect(s.numero('h0')).toBeCloseTo(1, 9)
     s.definirParametro('alpha', 30)
-    expect(s.numero('h0')).toBeCloseTo(0.125, 3)
+    expect(s.numero('h0')).toBeCloseTo(1 - Math.cos(Math.PI / 6), 9)
     // Editando h, α acompanha.
-    s.definirParametro('h0', 0.25)
-    expect(s.numero('alpha')).toBeCloseTo(45, 0)
+    s.definirParametro('h0', 0.5)
+    expect(s.numero('alpha')).toBeCloseTo(60, 6)
+  })
+
+  it('a relação h ↔ α segue a geometria do modo (RF-158)', () => {
+    // As duas geometrias divergem: a 90° com L = 1, o arco sobe 1 m e a face
+    // cicloidal sobe apenas 0,5 m — que é o seu topo, 2r.
+    const simples = new Store()
+    simples.definirParametro('L', 1)
+    simples.definirParametro('alpha', 90)
+    expect(simples.numero('h0')).toBeCloseTo(1, 9)
+
+    const cicloidal = new Store({ modo: 'cicloidal' })
+    cicloidal.definirParametro('L', 1)
+    cicloidal.definirParametro('alpha', 90)
+    expect(cicloidal.numero('h0')).toBeCloseTo(0.5, 9)
+  })
+
+  it('recusa altura acima do máximo geométrico do modo (RF-160)', () => {
+    const s = new Store({ modo: 'cicloidal' })
+    s.definirParametro('L', 1)
+    const resultado = s.definirParametro('h0', 5)
+    expect(resultado.limitadoDe).toBe(5)
+    // Topo da face cicloidal: 2r = L/2.
+    expect(s.numero('h0')).toBeCloseTo(0.5, 9)
+    expect(resultado.mensagem).toBeDefined()
   })
 })
 
@@ -216,15 +240,15 @@ describe('Store: coerência da posição de largada (Área M)', () => {
     const s = store()
     s.definirParametro('alpha', 45)
     expect(Math.abs(s.numero('theta0'))).toBeCloseTo(45, 9)
-    expect(s.numero('h0')).toBeCloseTo(0.25, 9)
+    expect(s.numero('h0')).toBeCloseTo(1 - Math.cos(Math.PI / 4), 9)
 
     s.definirParametro('theta0', 30)
     expect(s.numero('alpha')).toBeCloseTo(30, 9)
-    expect(s.numero('h0')).toBeCloseTo(Math.sin((30 * Math.PI) / 180) ** 2 / 2, 9)
+    expect(s.numero('h0')).toBeCloseTo(1 - Math.cos(Math.PI / 6), 9)
 
     s.definirParametro('h0', 0.5)
-    expect(s.numero('alpha')).toBeCloseTo(90, 6)
-    expect(Math.abs(s.numero('theta0'))).toBeCloseTo(90, 6)
+    expect(s.numero('alpha')).toBeCloseTo(60, 6)
+    expect(Math.abs(s.numero('theta0'))).toBeCloseTo(60, 6)
   })
 
   it('editar α não troca o lado de largada (RF-164)', () => {
@@ -240,7 +264,7 @@ describe('Store: coerência da posição de largada (Área M)', () => {
     s.definirParametro('theta0', 45)
     s.definirParametro('L', 2)
     expect(s.numero('alpha')).toBeCloseTo(45, 9)
-    expect(s.numero('h0')).toBeCloseTo(0.5, 9)
+    expect(s.numero('h0')).toBeCloseTo(2 * (1 - Math.cos(Math.PI / 4)), 9)
   })
 
   it('entrar no cicloidal limita o canônico junto com o espelho', () => {
@@ -260,8 +284,9 @@ describe('Store: coerência da posição de largada (Área M)', () => {
 
   it('não sobra ruído de ponto flutuante na volta pelo arco-seno', () => {
     const s = store()
-    s.definirParametro('h0', 0.25)
-    expect(s.numero('alpha')).toBe(45)
+    // h = L(1 − cos 60°) = L/2 volta exatamente a 60°.
+    s.definirParametro('h0', 0.5)
+    expect(s.numero('alpha')).toBe(60)
   })
 
   it('só o canônico é compartilhado; os espelhos são reconstruídos', () => {

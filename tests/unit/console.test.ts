@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { executar, interpretar } from '../../src/state/console.js'
+import { formatarEstadoConsole, executar, interpretar } from '../../src/state/console.js'
 import { Store } from '../../src/state/store.js'
 
 describe('α = 10 — o requisito que o usuário escreveu', () => {
@@ -90,7 +90,7 @@ describe('limitação e mensagens', () => {
     const s = new Store()
     const r = executar(s, 'α = 500')
     expect(s.numero('alpha')).toBe(179.9)
-    expect(r.mensagens.join(' ')).toContain('179.9')
+    expect(r.mensagens.join(' ')).toContain('179,9')
   })
 
   it('recusa texto onde se espera número', () => {
@@ -186,5 +186,91 @@ describe('entradas malformadas', () => {
     const r = executar(s, 'alpha = 30;;')
     expect(r.sucesso).toBe(true)
     expect(s.numero('alpha')).toBe(30)
+  })
+})
+
+describe('console: endereçamento indexado (RF-152 a RF-155)', () => {
+  const comDois = (): Store => {
+    const s = new Store()
+    s.definirParametro('numeroPendulos', 2)
+    return s
+  }
+
+  it('aceita as três grafias do índice (RF-152)', () => {
+    for (const grafia of ['L₂ = 3', 'L2 = 3', 'L_2 = 3']) {
+      const s = comDois()
+      expect(executar(s, grafia).sucesso).toBe(true)
+      expect(s.numeroDoPendulo('L', 2)).toBe(3)
+      expect(s.numeroDoPendulo('L', 1)).toBe(1)
+    }
+  })
+
+  it('diz qual interpretação adotou (RF-153)', () => {
+    const s = comDois()
+    expect(executar(s, 'L = 2').mensagens.join(' ')).toContain('2 pêndulos')
+  })
+
+  it('cala quando há um pêndulo só', () => {
+    const s = new Store()
+    expect(executar(s, 'L = 2').mensagens).toEqual([])
+  })
+
+  it('índice fora da faixa não altera nada (RF-155)', () => {
+    const s = comDois()
+    const r = executar(s, 'L₅ = 3')
+    expect(r.sucesso).toBe(false)
+    expect(r.erros.join(' ')).toContain('1 a 2')
+    expect(s.numeroDoPendulo('L', 1)).toBe(1)
+  })
+
+  it('a atomicidade vale para a linha indexada inteira', () => {
+    const s = comDois()
+    // A segunda atribuição é inválida: nenhuma das duas pode ser escrita.
+    expect(executar(s, 'L₁ = 2; L₅ = 3').sucesso).toBe(false)
+    expect(s.numeroDoPendulo('L', 1)).toBe(1)
+    expect(s.acoplado('L')).toBe(true)
+  })
+
+  it('a altura de cada pêndulo é endereçável, como no esboço (h₂ = 3)', () => {
+    const s = comDois()
+    s.definirParametro('L', 4)
+    expect(executar(s, 'h₂ = 3').sucesso).toBe(true)
+    expect(s.numeroDoPendulo('h0', 2)).toBeCloseTo(3, 6)
+    expect(s.numeroDoPendulo('h0', 1)).toBeCloseTo(4 * (1 - Math.cos(Math.PI / 18)), 6)
+  })
+
+  it('L₁ = 0, do esboço, é limitado ao mínimo e o ajuste é comunicado', () => {
+    // Limitar e explicar é a política do app para valor fora de faixa; recusar
+    // a linha inteira faria o usuário perder as outras atribuições dela.
+    const s = comDois()
+    const r = executar(s, 'L₁ = 0')
+    expect(r.sucesso).toBe(true)
+    expect(s.numeroDoPendulo('L', 1)).toBe(0.05)
+    expect(s.numeroDoPendulo('L', 2)).toBe(1)
+    expect(r.mensagens.join(' ')).toContain('0,05')
+  })
+})
+
+describe('formatarEstadoConsole com pêndulos desacoplados', () => {
+  it('acoplado, o bloco não menciona índices', () => {
+    const s = new Store()
+    s.definirParametro('numeroPendulos', 3)
+    expect(formatarEstadoConsole(s)).not.toContain('_2')
+  })
+
+  it('desacoplado, descreve cada pêndulo e o bloco volta a ser aplicável', () => {
+    const s = new Store()
+    s.definirParametro('numeroPendulos', 3)
+    s.definirIndexado('theta0', 2, 40)
+    const bloco = formatarEstadoConsole(s)
+    expect(bloco).toContain('theta0_1')
+    expect(bloco).toContain('theta0_2 = 40')
+    // Espelhos ficam de fora: são reconstruídos de θ₀ ao reimportar.
+    expect(bloco).not.toContain('h0_2')
+
+    const destino = new Store()
+    destino.definirParametro('numeroPendulos', 3)
+    expect(executar(destino, bloco.split('\n').join('; ')).sucesso).toBe(true)
+    expect(destino.numeroDoPendulo('theta0', 2)).toBeCloseTo(40, 6)
   })
 })

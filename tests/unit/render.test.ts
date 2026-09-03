@@ -12,9 +12,11 @@ import { sensorEmDisparo } from '../../src/render/sensor-marker.js'
 import { opacidadeDeDesvanecimento, RastroDePeriodo } from '../../src/render/trace.js'
 import { calcularVistas, TransformacaoMundo } from '../../src/render/transform.js'
 import type { EstadoPenduloCena } from '../../src/render/types.js'
+import { corDoPendulo } from '../../src/render/palette.js'
 
 const estado = (parcial: Partial<EstadoPenduloCena> = {}): EstadoPenduloCena => ({
   id: 'p1',
+  indice: 1,
   modo: 'simples',
   L: 1,
   m: 2,
@@ -262,5 +264,57 @@ describe('vetores e referencia T0', () => {
   it('no cicloidal o fantasma evolui harmonicamente em s/L', () => {
     const cicloidal = estado({ modo: 'cicloidal', tempo: 0.5 })
     expect(anguloFantasmaT0(cicloidal)).toBeCloseTo(0, 12)
+  })
+})
+
+describe('corDoPendulo (RF-159)', () => {
+  const BASE = '#b3261e'
+
+  it('o primeiro pêndulo mantém a cor do modo', () => {
+    expect(corDoPendulo(BASE, 1)).toBe(BASE)
+  })
+
+  it('pêndulos diferentes recebem cores diferentes', () => {
+    const cores = [1, 2, 3, 4, 5, 6].map((i) => corDoPendulo(BASE, i))
+    expect(new Set(cores).size).toBe(6)
+  })
+
+  it('devolve sempre um hexadecimal válido', () => {
+    for (let i = 1; i <= 8; i++) expect(corDoPendulo(BASE, i)).toMatch(/^#[0-9a-f]{6}$/)
+  })
+
+  it('mantém a luminosidade em faixa legível nos dois temas', () => {
+    for (let i = 1; i <= 8; i++) {
+      const hex = corDoPendulo(BASE, i)
+      const n = Number.parseInt(hex.slice(1), 16)
+      const luz = (((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255)) / (3 * 255)
+      expect(luz).toBeGreaterThan(0.15)
+      expect(luz).toBeLessThan(0.92)
+    }
+  })
+
+  it('uma cor ilegível não derruba o desenho', () => {
+    expect(corDoPendulo('transparent', 2)).toBe('transparent')
+  })
+
+  it('um cinza sem saturação permanece cinza', () => {
+    expect(corDoPendulo('#808080', 3)).toMatch(/^#[0-9a-f]{6}$/)
+  })
+})
+
+describe('corDoPendulo: matiz em cada setor', () => {
+  it('deriva cores válidas seja qual for o canal dominante', () => {
+    // As três ramificações do cálculo de matiz: vermelho, verde e azul máximos.
+    for (const base of ['#b3261e', '#1e9b3a', '#1f6feb']) {
+      for (let i = 1; i <= 7; i++) {
+        expect(corDoPendulo(base, i)).toMatch(/^#[0-9a-f]{6}$/)
+      }
+    }
+  })
+
+  it('preserva a identidade do canal dominante ao longo dos índices', () => {
+    const verde = corDoPendulo('#1e9b3a', 1)
+    expect(verde).toBe('#1e9b3a')
+    expect(corDoPendulo('#1f6feb', 2)).not.toBe('#1f6feb')
   })
 })
