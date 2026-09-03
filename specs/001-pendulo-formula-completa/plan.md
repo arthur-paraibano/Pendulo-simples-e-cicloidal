@@ -37,7 +37,7 @@ validação. Essa dupla decisão é o que torna executáveis os princípios I, I
 | Runtime | Navegador; Node 20+ apenas para build e testes |
 | Build | **Vite 8** (o plano previa Vite 5; o ecossistema já está em 8 e todos os pares são compatíveis) |
 | Framework de UI | **Nenhum** — DOM direto, componentes como funções de fábrica |
-| Dependências de runtime | KaTeX (fórmulas), uPlot (séries temporais). Nada mais. |
+| Dependências de runtime | KaTeX (fórmulas). Nada mais — os gráficos são próprios, por AD-03. |
 | Dependências de desenvolvimento | Vite 8, TypeScript 5.9, Vitest 4, Playwright 1.62, ESLint 10 (config plana), typescript-eslint 8, `vite-plugin-singlefile` 2 |
 | Alvos de entrega | `dist/` para GitHub Pages **e** `pendulo-simulador.html` na raiz (arquivo único offline, gerado por `npm run build:single`) |
 | Plataformas | Chrome/Edge 111+, Firefox 113+, Safari 16.4+; desktop e tablet |
@@ -227,7 +227,7 @@ Danilo/
 │  ├─ render/
 │  │   ├─ layers.ts · transform.ts · palette.ts
 │  │   ├─ scene.ts · trace.ts · cycloid-face.ts · instruments.ts · sensor-marker.ts
-│  │   └─ charts/ timeseries.ts (uPlot) · xyplot.ts (próprio) · ticks.ts
+│  │   └─ charts/ xyplot.ts (renderizador único) · escala.ts
 │  │
 │  ├─ ui/
 │  │   ├─ view-selector.ts           # Simples | Cicloidal | Ambos (RF-127)
@@ -442,7 +442,7 @@ Fixtures principais (extraídas de [research.md](./research.md)):
 | **4. Cena** | camadas, transformação, cena simples, faces cicloidais, rastro, sensor | 60 fps com rastro ligado; geometria `L = 4r` coerente |
 | **5. Fórmula e parâmetros** | `formula.ts`, `ParamControl`, console, seletor de visualização | Digitar `α = 10` atualiza fórmula, cena e derivados em ≤ 100 ms |
 | **6. Tabela de coleta** | `data-table.ts`, coleta automática e manual, estatísticas, CSV | Cenários de coleta do quickstart passando |
-| **7. Gráficos e instrumentos** | uPlot, `XYPlot`, transferidor, régua, cronômetro, fotoporta | Gráficos a 20 Hz sem violar RNF-001 |
+| **7. Gráficos e instrumentos** | `XYPlot` próprio, escalas, cronômetro, fotoporta | Gráficos a 20 Hz sem violar RNF-001 |
 | **8. Roteiros e presets** | presets de fábrica, roteiros guiados, desafio do Planeta X | Roteiro do experimento alemão executável de ponta a ponta |
 | **9. i18n e acessibilidade** | pt-BR/en/de, teclado, leitores de tela, contraste, movimento reduzido | Auditoria WCAG 2.1 AA sem violação bloqueante |
 | **10. Entrega** | build Pages, arquivo único, `dist/` commitado, documentação | Arquivo único abre offline com duplo clique e funciona por completo |

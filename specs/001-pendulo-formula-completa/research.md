@@ -289,7 +289,7 @@ reproduzir o experimento.
 |---|---|---|---|
 | Q9 — Stack | Vite + TypeScript, sem framework | Vanilla sem build; React; Svelte | Tela única com estado pequeno e muito numérico; TS obrigatório pelas unidades; Princípio VII |
 | Q10 — Cena | Canvas 2D em 3 camadas + overlay HTML | SVG; WebGL; canvas único | Rastro acumulativo isolado; rótulos em HTML resolvem a11y e i18n |
-| Q11 — Gráficos | uPlot + `XYPlot` próprio | Chart.js; Plotly; D3 | uPlot é leve e rápido, mas exige eixo x monotônico; retrato de fase é paramétrico |
+| Q11 — Gráficos | `XYPlot` próprio, único | uPlot + `XYPlot`; Chart.js; Plotly; D3 | uPlot exige eixo x monotônico, que três dos gráficos violam; o `XYPlot` teria de existir de todo modo, e manter os dois custaria uma segunda biblioteca sem cobrir nada a mais (AD-03) |
 | Q12 — Fórmulas | KaTeX, `htmlAndMathml`, `\htmlClass`/`\htmlId` | MathJax; MathML nativo; SVG | Render **síncrono** evita cintilação a cada mudança de parâmetro; MathML nativo ainda irregular |
 | Q13 — Parâmetros | `<input type="range">` + `<input type="number">` nativos, gerados por esquema | Widget `role="slider"` custom | Princípio III exige digitação; nativo já entrega teclado e leitor de tela |
 | Q14 — Estado/URL | Store próprio; hash legível `#L=1&alpha=10&v=1` | nanostores; Redux; base64 comprimido | Auditável a olho; professor monta o link à mão |

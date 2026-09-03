@@ -197,7 +197,7 @@ padrão (botão "Restaurar tudo"). Tolerância de leitura: as casas decimais exi
 | # | Ação | Resultado esperado |
 |---|---|---|
 | 9.7 | Observar o gráfico de erro em escala logarítmica | Decaimento monotônico com `N`; **erro sempre negativo** |
-| 9.8 | Levar `α` a 150° e ver `N` necessário | `N ≥ 53` para 0,1 % — a explosão do custo perto de 180° |
+| 9.8 | Levar `α` a 150° e ver `N` necessário | **mais de 50 termos** para 0,1 % — a resposta matemática é 53, acima do teto `N ≤ 50` de P42, e é essa impossibilidade que evidencia a explosão do custo perto de 180° |
 | 9.9 | Ativar Kidd–Fogg, Lima–Arun e duas iterações a `α = 90°` | Erros `+0,7512 %`, `+0,2487 %` e `−0,00139 %` |
 | 9.10 | Abrir os créditos de cada aproximação | Cada uma exibe sua fonte bibliográfica |
 

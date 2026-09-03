@@ -314,22 +314,36 @@ com três gráficos ativos, depende de T097 e do gate de desempenho T121.
 
 ---
 
-## Fase 7 — Gráficos e Instrumentos (T097–T106)
+## Fase 7 — Gráficos e Instrumentos (T097–T106) ✅ CONCLUÍDA
+
+Por AD-03 não há uPlot: um renderizador próprio cobre os sete gráficos, e as
+colunas de arquivo abaixo refletem isso — o `timeseries.ts` previsto na versão
+original destas tarefas nunca chegou a existir.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
-| T097 | Integrar uPlot com atualização a 20 Hz | `src/render/charts/timeseries.ts` | RNF-002 | Não viola o orçamento de quadro | T072 |
-| T098 | [P] Implementar gráficos `θ(t)`, `ω(t)` e `a(t)` | `src/render/charts/timeseries.ts` | RF-075 | Séries distinguíveis por traço e cor | T097 |
-| T099 | [P] Implementar as barras de energia com energia térmica | `src/render/charts/timeseries.ts` | RF-078 | Soma constante sem dissipação | T029, T097 |
-| T100 | [P] Implementar a curva `T(α)` com os modelos sobrepostos | `src/render/charts/timeseries.ts` | RF-079, RF-081 | Cicloidal aparece como reta horizontal | T030, T097 |
-| T101 | [P] Implementar o gráfico de erro em escala linear e logarítmica | `src/render/charts/timeseries.ts` | RF-080 | Erro sempre negativo para série truncada | T023, T097 |
-| T102 | [P] Implementar o gráfico de convergência por número de termos | `src/render/charts/timeseries.ts` | RF-084 | Confere com o Cenário 9 | T020, T097 |
-| T103 | Implementar o `XYPlot` próprio para retrato de fase e Poincaré | `src/render/charts/xyplot.ts` | RF-076, RF-077 | Trajetória paramétrica correta | T072 |
-| T104 | Implementar o cronômetro manual e a contagem de `n` períodos | `src/ui/panels/medicoes.ts` | RF-090, RF-093 | Período médio exibido | T040 |
-| T105 | Implementar a fotoporta móvel como instrumento adicional distinto | `src/ui/panels/medicoes.ts` | RF-091, RF-092 | Rotulada distintamente do sensor fixo | T104, T041 |
-| T106 | Implementar o ruído de medição com semente reprodutível | `src/state/measurements.ts` | RF-094 | Mesma semente ⇒ mesma sequência | T056 |
+| T097 | ✅ Painel de gráficos com redesenho a 20 Hz e canvas único | `src/ui/panels/graficos.ts` | RNF-002 | Não viola o orçamento de quadro | T072 |
+| T098 | ✅ Gráficos `θ(t)`, `ω(t)` e `a(t)` | `src/state/charts.ts` | RF-075 | Séries distinguíveis por traço e cor | T097 |
+| T099 | ✅ Energia cinética, potencial, térmica e total | `src/state/charts.ts` | RF-078 | Soma constante sem dissipação | T029, T097 |
+| T100 | ✅ Curva `T(α)` com os modelos sobrepostos | `src/state/charts.ts` | RF-079, RF-081 | Cicloidal aparece como reta horizontal | T030, T097 |
+| T101 | ✅ Gráfico de erro em escala linear e logarítmica | `src/state/charts.ts`, `src/render/charts/escala.ts` | RF-080 | Erro sempre negativo para série truncada | T023, T097 |
+| T102 | ✅ Convergência por número de termos, com o custo em `N` | `src/state/charts.ts`, `src/physics/analysis.ts` | RF-084, RF-013 | Confere com o Cenário 9 | T020, T097 |
+| T103 | ✅ `XYPlot` próprio para retrato de fase e Poincaré | `src/render/charts/xyplot.ts` | RF-076, RF-077, RF-086 | Trajetória paramétrica correta | T072 |
+| T104 | ✅ Cronômetro manual e contagem de `n` períodos | `src/state/instrumentos.ts`, `src/ui/panels/medicoes.ts` | RF-090, RF-093 | Período médio exibido | T040 |
+| T105 | ✅ Fotoporta móvel como instrumento adicional distinto | `src/state/instrumentos.ts`, `src/ui/panels/medicoes.ts` | RF-091, RF-092 | Rotulada distintamente do sensor fixo | T104, T041 |
+| T106 | ✅ Ruído de medição com semente reprodutível | `src/state/instrumentos.ts` | RF-094 | Mesma semente ⇒ mesma sequência | T056 |
 
-**Portão de saída**: Cenários 3 e 9 do quickstart passando; RNF-001 mantido com gráficos ativos.
+**Portão de saída**: ✅ Cenários 3 e 9 do quickstart passando (`tests/e2e/graficos.spec.ts`);
+RNF-001 mantido com gráfico temporal ativo; 836 testes unitários e 86 e2e verdes.
+
+**Achados registrados nesta fase**
+
+- O quickstart 9.8 prometia ler `N ≥ 53` a 150°, acima do teto `N ≤ 50` de P42.
+  A busca passa a devolver *nulo* nesse caso, e a interface diz "mais de 50
+  termos" — a impossibilidade é o próprio ponto pedagógico.
+- Com `FONTE = fórmula` (o padrão) o motor não integra, e os quatro gráficos
+  temporais ficariam vazios sem explicação. Cada um passa a declarar qual fonte
+  precisa, em vez de aparentar defeito.
 
 ---
 
