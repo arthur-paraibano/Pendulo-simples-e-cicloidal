@@ -17,7 +17,7 @@ $$T = 2\pi\sqrt{\frac{L}{g}}\left(1 + \frac{1}{4}\operatorname{sen}^2\left(\frac
 
 | Como | Onde |
 |---|---|
-| **No navegador** | <https://arthur-paraibano.github.io/Pendulo-simples-e-cicloidal/> |
+| **No navegador** | <https://arthur-paraibano.github.io/Simple-and-cycloidal-pendulum/> |
 | **Offline, sala de aula** | [`pendulo-simulador.html`](pendulo-simulador.html) — 580 kB, um arquivo só: baixe, dê duplo clique. Sem servidor, sem internet, sem instalação. |
 | **Do código** | `npm ci` e depois `npm run dev` (Node ≥ 22.12) |
 
