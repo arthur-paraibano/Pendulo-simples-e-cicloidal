@@ -25,6 +25,8 @@ import { criarPainelGraficos } from './ui/panels/graficos.js'
 import { criarPainelMedicoes } from './ui/panels/medicoes.js'
 import { criarPainelCenarios } from './ui/panels/cenarios.js'
 import { criarPainelDiagnostico } from './ui/panels/diagnostico.js'
+import { criarPainelCreditos } from './ui/panels/creditos.js'
+import { criarPainelIntroducao } from './ui/panels/introducao.js'
 import { configurarAcessibilidade, criarSkipLinks, navegarTabelaPorTeclado } from './ui/a11y.js'
 import { sincronizarEndereco } from './state/endereco.js'
 import { t } from './i18n/index.js'
@@ -143,6 +145,8 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const recipienteGraficos = document.querySelector<HTMLElement>('#graficos')
   const recipienteMedicoes = document.querySelector<HTMLElement>('#medicoes')
   const recipienteCenarios = document.querySelector<HTMLElement>('#cenarios')
+  const recipienteCreditos = document.querySelector<HTMLElement>('#creditos')
+  const recipientePrincipal = document.querySelector<HTMLElement>('#principal')
   if (!document.querySelector('.skip-links')) {
     document.body.prepend(criarSkipLinks())
   }
@@ -235,6 +239,19 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
           telaDaCena: () => camadas.compor(),
         })
   const painelDiagnostico = criarPainelDiagnostico(secaoCena)
+  // A orientação entra no topo do conteúdo principal, depois do seletor de
+  // visualização — que continua sendo o primeiro elemento da tela (RF-127).
+  const introducao =
+    recipientePrincipal === null
+      ? null
+      : criarPainelIntroducao(recipientePrincipal, { anunciar })
+  const creditos =
+    recipienteCreditos === null
+      ? null
+      : criarPainelCreditos(
+          recipienteCreditos,
+          introducao === null ? {} : { aoReverIntroducao: () => introducao.mostrar() },
+        )
   // O endereco so passa a ser publicado depois que a URL de entrada ja foi
   // aplicada: publicar antes reescreveria o estado recebido com o padrao.
   const endereco = sincronizarEndereco(store)
@@ -362,6 +379,8 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     consoleParametros?.destruir()
     painel?.destruir()
     painelDiagnostico.destruir()
+    creditos?.destruir()
+    introducao?.destruir()
     cancelarTecladoTabela?.()
     a11y.destruir()
     secaoCena.removeEventListener('click', aoClicarControle)

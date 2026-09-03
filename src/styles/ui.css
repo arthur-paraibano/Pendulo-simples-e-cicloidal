@@ -535,6 +535,100 @@
 .medicao-derivada,
 .medicao-nota { margin: 0; color: var(--cor-texto-suave); font-size: var(--tam-texto-pequeno); }
 
+/* ── Orientação de primeiro uso e créditos (F10) ──────────────────────────── */
+
+/* A altura deste cartão sai do orçamento da primeira dobra: ele fica no fluxo,
+   acima da cena, e a Área K exige a fórmula visível em 1366×768. Daí o
+   espaçamento curto, o texto pequeno e o título na mesma linha do botão. */
+.painel-introducao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  margin: var(--esp-2) var(--esp-3);
+  padding: var(--esp-3);
+  border: 1px solid var(--cor-acento);
+  border-left-width: 4px;
+  border-radius: var(--raio-grande);
+  background: var(--cor-acento-suave);
+}
+
+/* `display: flex` no seletor de classe vence o `[hidden] { display: none }` da
+   folha do navegador, e o cartão dispensado continuaria na tela. */
+.painel-introducao[hidden] { display: none; }
+
+.introducao-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-3);
+  flex-wrap: wrap;
+}
+
+.painel-introducao h2 { margin: 0; font-size: var(--tam-texto-grande); }
+
+.introducao-lista {
+  display: grid;
+  gap: var(--esp-2) var(--esp-4);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--tam-texto-pequeno);
+}
+
+.introducao-dispensar { min-height: 36px; }
+
+.painel-creditos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-3);
+  margin: var(--esp-3);
+  padding: var(--esp-4);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-grande);
+  background: var(--cor-fundo-elevado);
+}
+
+.painel-creditos h2 { margin: 0; }
+.painel-creditos h3 { margin: 0; font-size: var(--tam-texto-grande); }
+.creditos-nota { margin: 0; color: var(--cor-texto-suave); font-size: var(--tam-texto-pequeno); }
+
+.creditos-lista {
+  display: grid;
+  gap: var(--esp-3);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.credito-fonte p { margin: var(--esp-1) 0 0; font-size: var(--tam-texto-pequeno); }
+.credito-fonte a { font-size: var(--tam-texto-pequeno); overflow-wrap: anywhere; }
+
+/* A tabela é larga por natureza; rolar só ela evita rolagem horizontal na
+   página inteira, que o RNF-014 proíbe. */
+.creditos-rastreabilidade { overflow-x: auto; }
+.creditos-rastreabilidade summary { cursor: pointer; font-weight: 600; }
+
+.creditos-tabela {
+  margin-top: var(--esp-3);
+  border-collapse: collapse;
+  font-size: var(--tam-texto-pequeno);
+}
+
+.creditos-tabela th,
+.creditos-tabela td {
+  padding: var(--esp-2);
+  border-bottom: 1px solid var(--cor-borda);
+  text-align: left;
+  vertical-align: top;
+}
+
+.creditos-tabela tbody th { font-weight: 600; }
+.creditos-tabela small { display: block; margin-top: var(--esp-1); color: var(--cor-texto-suave); font-weight: 400; }
+.creditos-valor { font-family: var(--fonte-numerica); white-space: nowrap; }
+.creditos-valor-formula { font-family: inherit; white-space: normal; }
+
 @media (min-width: 900px) {
   .palco-canvas { height: clamp(300px, 40vh, 460px); }
 }
