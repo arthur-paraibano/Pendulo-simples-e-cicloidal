@@ -1,6 +1,6 @@
 {
   "name": "pendulo-formula-completa",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Simulador didático da fórmula geral do período do pêndulo: regime simples e regime cicloidal a partir de uma única fórmula-motor.",
