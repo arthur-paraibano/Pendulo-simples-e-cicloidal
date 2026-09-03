@@ -116,14 +116,14 @@ constitution ──▶ specify ──▶ plan ──▶ tasks ──▶ implemen
 | 3 · Estado | Os 112 parâmetros, store, URL, presets, console | ✅ |
 | 4 · Cena | Canvas em três camadas, faces cicloidais, instrumentos | ✅ |
 | 5 · Fórmula e parâmetros | Fórmula viva em KaTeX, controles, painel de derivados | ✅ |
-| 5b · Parâmetros indexados | `L₁`, `h₂`, acoplar/desacoplar, alturas independentes | ⬜ |
+| 5b · Parâmetros indexados | `L₁`, `h₂`, acoplar/desacoplar, alturas independentes | ✅ |
 | 6 · Tabela de coleta | A tabela de `T` e `g` sob a fórmula | ✅ |
 | 7 · Gráficos e instrumentos | Sete gráficos, cronômetro e fotoporta móvel | ✅ |
 | 8–10 | Presets, roteiros, exportação, i18n, acessibilidade, entrega | ⬜ |
 
-**Como está verificado hoje**: 836 testes unitários (99,1 % de instruções, 94,6 % de ramos); 86
-cenários de ponta a ponta em Chromium, Firefox e WebKit; build de 189,3 kB comprimidos para Pages e
-519,1 kB no arquivo único offline, ambos sem requisição externa.
+**Como está verificado hoje**: 899 testes unitários (98,5 % de instruções, 93,2 % de ramos); 106
+cenários de ponta a ponta em Chromium, Firefox e WebKit; build comprimido para Pages e arquivo único
+offline dentro do orçamento, ambos sem requisição externa.
 
 Para prosseguir, execute as tarefas de [tasks.md](specs/001-pendulo-formula-completa/tasks.md) a
 partir da Fase 8. Cada fase tem um portão de saída verificável, e as tarefas de teste precedem as de

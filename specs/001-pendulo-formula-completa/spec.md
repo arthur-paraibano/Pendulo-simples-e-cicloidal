@@ -834,7 +834,7 @@ leituras e a notação matemática acompanham a escolha.
 | P12 | `VINC` | Vínculo `L = 4r` | booleano | travado · destravado | travado | — | Básico |
 | P13 | `φ` | Fase paramétrica da cicloide | rad | 0 – 2π | — | 0,01 | Avançado |
 | P14 | `s₀` | Deslocamento inicial ao longo do arco | m | 0 – L | 0,5 | 0,01 | Básico |
-| P15 | `h₀` | Altura inicial de largada | m | 0 – 2r · **espelho de θ₀** | — | 0,001 | Avançado |
+| P15 | `h₀` | Altura inicial de largada | m | 0 – 2r no cicloidal; 0 – 2L no simples · **espelho de θ₀** | — | 0,001 | Avançado |
 | P16 | `ARC` | Abertura angular do arco desenhado | ° | 0 – 360 | 360 | 1 | Avançado |
 | P17 | `e_f` | Espessura das faces cicloidais | mm | 0 – 20 | 2,0 | 0,5 | Avançado |
 | P18 | `n_m` | Massas na demonstração de tautocronia | — | 1 – 8 | 2 | 1 | Básico |
@@ -967,6 +967,12 @@ leituras e a notação matemática acompanham a escolha.
 | P110 | `KBD` | Operação completa por teclado | booleano | ligada (não desativável) | Básico |
 | P111 | `SR` | Descrições para leitor de tela | booleano | ligadas | Básico |
 | P112 | `MOV` | Reduzir movimento | booleano | automático (segue o sistema) | Básico |
+| P113 | `FOCO` | Pêndulo em foco | — | 1 – 8 | 1 | 1 | Básico |
+
+> **P113 acrescentado em revisão.** RF-153 exige que uma atribuição sem índice
+> se aplique "ao pêndulo em foco" quando o parâmetro está desacoplado, mas o
+> catálogo original não declarava esse foco em lugar nenhum. Sem ele o
+> requisito não teria como ser cumprido nem verificado.
 
 > Faixas, padrões e passos das Tabelas C1–C9 são **propostas de design** desta especificação,
 > exceto onde derivam de restrição física verificada (`α ≤ 90°` no modo cicloidal; `L = 4r`;

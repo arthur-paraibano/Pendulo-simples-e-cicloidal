@@ -409,21 +409,45 @@ diferente do simulado. Verificado na aplicação em execução.
 
 ---
 
-## Fase 5b — Parâmetros Indexados e Altura de Largada (T125–T130)
+## Fase 5b — Parâmetros Indexados e Altura de Largada (T125–T130) ✅ CONCLUÍDA
 
 Deriva da Área L da spec (anotações `L₁ = 0` e `h₂ = 3` do esboço). Numerada após as demais por ter
 sido acrescentada em revisão posterior; executa junto com a Fase 5.
 
 | ID | Tarefa | Arquivos | Req. | Conclusão | Dep. |
 |---|---|---|---|---|---|
-| T125 | [P] Testes do endereçamento indexado e da relação `h ↔ α` | `tests/unit/indices.test.ts` | RF-151 a RF-160 | Falham; cobrem as três grafias e `h = L·sen²θ/2` | T047 |
-| T126 | Estender o esquema com parâmetros indexados por pêndulo | `src/state/schema.ts` | RF-151, RF-156 | `L₁`, `α₂`, `h₁` resolvem para o pêndulo certo | T125, T048 |
-| T127 | Estender o console para aceitar `L₁`, `L1` e `L_1`, e índice ausente | `src/ui/param-console.ts` | RF-152, RF-153, RF-155 | T125 passa; índice inválido nomeia a faixa válida | T126, T080 |
-| T128 | Implementar acoplar e desacoplar por parâmetro, com indicação visual | `src/ui/param-control.ts` | RF-154 | Desacoplado, `L₁` e `L₂` ficam independentes | T126, T075 |
-| T129 | Implementar `hᵢ` com vínculo bidirecional a `αᵢ` e lado mestre | `src/physics/cycloid.ts`, `src/state/store.ts` | RF-157, RF-158, RF-160 | `h = L·sen²θ/2` no cicloidal; `h = L(1−cos α)` no simples; limite em `2r` | T125, T052 |
-| T130 | Implementar alturas independentes na demonstração de tautocronia | `src/ui/panels/parametros.ts`, `src/render/scene.ts` | RF-159 | Massas com `h₁`, `h₂`, … chegam juntas ao ponto zero | T129, T063 |
+| T125 | ✅ Testes do endereçamento indexado e da relação `h ↔ α` | `tests/unit/indices.test.ts` | RF-151 a RF-160 | Cobrem as três grafias e as duas geometrias | T047 |
+| T126 | ✅ Modelo puro de índice e acoplamento, e valores por pêndulo no Store | `src/state/indices.ts`, `src/state/store.ts`, `src/state/schema.ts` | RF-151, RF-156 | `L₁`, `α₂`, `h₁` resolvem para o pêndulo certo | T125, T048 |
+| T127 | ✅ Console honra o índice nas três grafias, e diz o que alcançou | `src/state/console.ts` | RF-152, RF-153, RF-155 | Índice inválido nomeia a faixa válida | T126, T080 |
+| T128 | ✅ Acoplar e desacoplar por parâmetro, com estado e rótulo visíveis | `src/ui/param-control.ts` | RF-154 | Desacoplado, `L₁` e `L₂` ficam independentes | T126, T075 |
+| T129 | ✅ `hᵢ` com vínculo bidirecional a `αᵢ`, por modo e por pêndulo | `src/state/store.ts` | RF-157, RF-158, RF-160 | `L(1−cos α)` no simples; `L·sen²θ/2` no cicloidal; limite em `2r` | T125, T052 |
+| T130 | ✅ N pêndulos simulados e desenhados, com alturas independentes | `src/app/runtime.ts`, `src/render/scene.ts`, `src/render/palette.ts` | RF-159 | Massas com `h₁`, `h₂`, … chegam juntas ao ponto zero | T129, T063 |
 
-**Portão de saída**: Cenário 4 do quickstart executável definindo a largada por altura, e não só por ângulo.
+**Portão de saída**: ✅ Cenário 4 executável pela altura (`tests/e2e/indices.spec.ts`);
+899 testes unitários e 106 de ponta a ponta verdes.
+
+**Achados registrados nesta fase**
+
+- **`h` usava a geometria errada no modo simples.** A reconciliação aplicava
+  `h = L·sen²θ/2` — a relação da face cicloidal — em qualquer modo. RF-158 pede
+  `h = L(1 − cos α)` no simples, e a 90° com `L = 1` a diferença é entre 0,5 m e
+  1 m. O padrão de `h₀` e a faixa de P15 vinham do mesmo engano.
+- **`n_p` (P10) estava declarado e nunca lido.** Nenhum segundo pêndulo era
+  simulado nem desenhado: a cena tinha uma vista por modo e parava no primeiro
+  estado daquele modo. Sem isso a tautocronia de RF-159 não tinha como existir.
+- **O trio da largada precisa acoplar junto.** Soltar só `h` deixava `h₂`
+  reconciliar o `α` *compartilhado*, e o último pêndulo escrito impunha o seu
+  ângulo a todos os outros — os três apareciam sobrepostos.
+- **P113 acrescentado.** RF-153 fala do "pêndulo em foco", que o catálogo não
+  declarava em lugar nenhum.
+- **O mobiliário do painel era redesenhado por pêndulo**, empilhando grades e
+  rótulos de ângulo; e o diagnóstico anunciava `FPS 1000000,0` ao dividir por um
+  intervalo nulo com a simulação pausada.
+
+**Fora do escopo desta fase**: a escrita do endereço compartilhável na barra do
+navegador é T112 (Fase 8). A serialização do estado indexado já existe e está
+coberta; o que falta é a aplicação publicá-la. O cabeçalho indexado do arquivo
+exportado depende da exportação CSV, que é T114.
 
 ---
 
@@ -449,7 +473,7 @@ Caminho crítico: **T001 → T011 → T018 → T022 → T036 → T039 → T048 �
 | L4 | T031, T032, T033 | Testes da Fase 2 |
 | L5 | T045, T046, T047 | Testes da Fase 3 |
 | L6 | T060, T061 | Transformação e paleta |
-| L7 | T098, T099, T100, T101, T102 | Gráficos, após a integração do uPlot |
+| L7 | T098, T099, T100, T101, T102 | Gráficos, sobre o renderizador próprio (AD-03) |
 | L8 | T113, T116, T119 | Exportação de imagem, traduções e acessibilidade visual |
 | L9 | T125 → T126, T129 | Testes de índice primeiro; esquema e altura em seguida |
 
