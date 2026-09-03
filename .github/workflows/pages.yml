@@ -54,6 +54,11 @@ jobs:
       - name: Build (arquivo único offline)
         run: npx vite build --config vite.config.singlefile.ts
 
+      # O arquivo da raiz é o que a sala de aula abre com duplo clique. Gerá-lo
+      # aqui prova que o caminho inteiro funciona, e não só o build do Vite.
+      - name: Gerar o arquivo único da raiz
+        run: node scripts/gerar-arquivo-unico.mjs
+
       # ── Portão G5: orçamento de tamanho (Princípio VII / RNF-012) ─────────
       - name: Orçamento de tamanho
         run: node scripts/verificar-tamanho.mjs
