@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { estatisticas, varreduraPeriodoPorAmplitude } from '../../src/physics/analysis.js'
+import {
+  estatisticas,
+  termosNecessarios,
+  varreduraPeriodoPorAmplitude,
+} from '../../src/physics/analysis.js'
 import { G_TERRA } from '../../src/physics/constants.js'
 import { ErroDeDominio, deg, grausParaRad, metro } from '../../src/physics/units.js'
 
@@ -103,5 +107,57 @@ describe('estatisticas', () => {
   it('dá desvio nulo para valores idênticos — aí sim medido', () => {
     const e = estatisticas([2, 2, 2])
     expect(e.desvioPadrao).toBeCloseTo(0, 15)
+  })
+})
+
+describe('termosNecessarios', () => {
+  const em = (graus: number) => grausParaRad(deg(graus))
+
+  it('responde o custo tabelado do quickstart', () => {
+    // Cenário 3.8 e 9.8: a 90° bastam poucos termos; a 150° o custo explode.
+    expect(termosNecessarios(em(90), 1e-3)).toBe(6)
+    expect(termosNecessarios(em(90), 1e-4)).toBe(9)
+  })
+
+  it('a 150° a resposta matemática (53) ultrapassa o teto da série', () => {
+    // Cenário 9.8: o custo explode perto de 180°. Como N_MAXIMO é 50, a busca
+    // devolve nulo — e é essa impossibilidade, não um número, que a interface
+    // precisa comunicar.
+    expect(termosNecessarios(em(150), 1e-3)).toBeNull()
+    expect(termosNecessarios(em(150), 1e-2)).toBe(27)
+  })
+
+  it('é monotônico: exigir mais precisão nunca pede menos termos', () => {
+    let anterior = 0
+    for (const tol of [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]) {
+      const n = termosNecessarios(em(90), tol)!
+      expect(n).toBeGreaterThanOrEqual(anterior)
+      anterior = n
+    }
+  })
+
+  it('cresce com a amplitude, que é a razão de o exato existir', () => {
+    const custos = [30, 60, 90, 120].map((a) => termosNecessarios(em(a), 1e-3)!)
+    for (let i = 1; i < custos.length; i++) expect(custos[i]!).toBeGreaterThan(custos[i - 1]!)
+  })
+
+  it('em amplitude pequena o primeiro termo já basta', () => {
+    expect(termosNecessarios(em(1), 1e-3)).toBe(0)
+  })
+
+  it('no cicloidal N = 0 é exato em qualquer amplitude', () => {
+    expect(termosNecessarios(em(90), 1e-12, 'cicloidal')).toBe(0)
+  })
+
+  it('devolve nulo quando o teto de termos não basta', () => {
+    // Perto de 180° nenhuma truncagem razoável alcança precisão de máquina.
+    expect(termosNecessarios(em(179), 1e-12)).toBeNull()
+    // O teto nunca escapa do domínio do somatório, mesmo se pedido acima dele.
+    expect(termosNecessarios(em(90), 1e-3, 'simples', 5000)).toBe(6)
+  })
+
+  it('recusa tolerância não positiva', () => {
+    expect(() => termosNecessarios(em(90), 0)).toThrow(ErroDeDominio)
+    expect(() => termosNecessarios(em(90), -1e-3)).toThrow(ErroDeDominio)
   })
 })

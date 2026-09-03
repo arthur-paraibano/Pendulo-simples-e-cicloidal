@@ -317,3 +317,51 @@ describe('domínio físico e URL adversária', () => {
     expect(desserializar(url).avisos.length).toBeGreaterThan(0)
   })
 })
+
+describe('acesso às amostras pelos painéis', () => {
+  it('modosVisiveis segue a visualização escolhida', () => {
+    const store = new Store()
+    const runtime = new RuntimeCena(store)
+    expect(runtime.modosVisiveis()).toEqual(['simples'])
+
+    store.definirParametro('modo', 'cicloidal')
+    expect(runtime.modosVisiveis()).toEqual(['cicloidal'])
+
+    store.definirParametro('modo', 'comparacao')
+    expect(runtime.modosVisiveis()).toEqual(['simples', 'cicloidal'])
+  })
+
+  it('entrega as amostras acumuladas de cada modo sob integração', () => {
+    const store = new Store({ fonteMovimento: 'integracao' })
+    store.definirParametro('modo', 'comparacao')
+    const runtime = new RuntimeCena(store)
+    runtime.aplicarComando('reproduzir')
+    runtime.avancar(0.2)
+
+    for (const modo of runtime.modosVisiveis()) {
+      const amostras = runtime.amostrasDoModo(modo)
+      expect(amostras.length).toBeGreaterThan(1)
+      expect(amostras.at(-1)!.t).toBeGreaterThan(0)
+    }
+  })
+
+  it('sob a fórmula fechada não há série temporal a acumular', () => {
+    // P44 = formula anima pela solução analítica e não integra: é por isso que
+    // os gráficos temporais avisam qual fonte precisam.
+    const store = new Store()
+    expect(store.texto('fonteMovimento')).toBe('formula')
+    const runtime = new RuntimeCena(store)
+    runtime.aplicarComando('reproduzir')
+    runtime.avancar(0.2)
+    expect(runtime.amostrasDoModo('simples').at(-1)!.t).toBe(0)
+  })
+
+  it('devolve lista vazia depois do desmonte, em vez de quebrar o painel', () => {
+    // O laço de quadro do painel pode chamar isto durante o desmonte.
+    const runtime = new RuntimeCena(new Store())
+    runtime.avancar(0.05)
+    expect(runtime.amostrasDoModo('simples').length).toBeGreaterThan(0)
+    runtime.destruir()
+    expect(runtime.amostrasDoModo('simples')).toEqual([])
+  })
+})

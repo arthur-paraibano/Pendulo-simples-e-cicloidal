@@ -3,6 +3,9 @@ import {
   amplitudeCorrenteEmGraus,
   listaDeTexto,
   graficoConvergencia,
+  graficoPoincare,
+  graficoTemporalPorId,
+  GRAFICOS_TEMPORAIS,
   graficoEnergia,
   graficoErroPorAmplitude,
   graficoPeriodoPorAmplitude,
@@ -298,7 +301,7 @@ describe('graficoEnergia', () => {
 describe('graficoRetratoDeFase', () => {
   it('é uma curva paramétrica: o eixo x não é monotônico', () => {
     // É exatamente esta propriedade que descarta um renderizador de séries.
-    const pontos = graficoRetratoDeFase(amostrar('simples', 30, 1200), 'simples').series[0]!.pontos
+    const pontos = graficoRetratoDeFase(new Store(), amostrar('simples', 30, 1200), 'simples').series[0]!.pontos
     let subiu = false
     let desceu = false
     for (let i = 1; i < pontos.length; i++) {
@@ -310,19 +313,19 @@ describe('graficoRetratoDeFase', () => {
 
   it('sem atrito a órbita é fechada: volta perto do ponto de partida', () => {
     const amostras = amostrar('cicloidal', 30, 1206)
-    const pontos = graficoRetratoDeFase(amostras, 'cicloidal').series[0]!.pontos
+    const pontos = graficoRetratoDeFase(new Store(), amostras, 'cicloidal').series[0]!.pontos
     const primeiro = pontos[0]!
     const ultimo = pontos.at(-1)!
     expect(Math.abs(ultimo.x - primeiro.x)).toBeLessThan(2)
   })
 
   it('marca o estado corrente', () => {
-    const modelo = graficoRetratoDeFase(amostrar('simples', 20), 'simples')
+    const modelo = graficoRetratoDeFase(new Store(), amostrar('simples', 20), 'simples')
     expect(modelo.marcadores).toHaveLength(1)
   })
 
   it('tolera amostras vazias sem marcador', () => {
-    expect(graficoRetratoDeFase([], 'simples').marcadores).toHaveLength(0)
+    expect(graficoRetratoDeFase(new Store(), [], 'simples').marcadores).toHaveLength(0)
   })
 })
 
@@ -407,5 +410,88 @@ describe('graficosAnaliticos e periodoCorrente', () => {
     expect(T0).toBeCloseTo(2.006067, 6)
     expect(serie).toBeCloseTo(2.085562, 6)
     expect(exato).toBeCloseTo(2.086256, 6)
+  })
+})
+
+describe('graficoPoincare', () => {
+  const forcado = (): Store => {
+    const store = new Store()
+    store.definirParametro('amplitudeForcamento', 0.5)
+    store.definirParametro('omegaForcamento', 3)
+    return store
+  }
+
+  it('sem forçamento não inventa uma nuvem de pontos', () => {
+    const modelo = graficoPoincare(new Store(), amostrar('simples', 30), 'simples')
+    expect(modelo.series[0]!.pontos).toHaveLength(0)
+    expect(modelo.descricao).toContain('Exige forçamento externo')
+  })
+
+  it('amostra um ponto por ciclo do forçamento', () => {
+    const amostras = amostrar('simples', 30, 2000)
+    const modelo = graficoPoincare(forcado(), amostras, 'simples')
+    const duracao = amostras.at(-1)!.t - amostras[0]!.t
+    const ciclos = Math.floor(duracao / ((2 * Math.PI) / 3))
+    // Um ponto por período de forçamento, com folga de um na borda.
+    expect(modelo.series[0]!.pontos.length).toBeGreaterThanOrEqual(ciclos - 1)
+    expect(modelo.series[0]!.pontos.length).toBeLessThanOrEqual(ciclos + 1)
+    expect(modelo.descricao).toContain('regime caótico')
+  })
+
+  it('os pontos ficam dentro do envelope do movimento', () => {
+    const amostras = amostrar('simples', 30, 2000)
+    const modelo = graficoPoincare(forcado(), amostras, 'simples')
+    for (const ponto of modelo.series[0]!.pontos) {
+      expect(Math.abs(ponto.x)).toBeLessThanOrEqual(30.001)
+      expect(Number.isFinite(ponto.y)).toBe(true)
+    }
+  })
+
+  it('sem amostras suficientes não há o que estroboscopar', () => {
+    expect(graficoPoincare(forcado(), [], 'simples').series[0]!.pontos).toHaveLength(0)
+  })
+
+  it('usa a cor do modo cicloidal quando é esse o pêndulo', () => {
+    const modelo = graficoPoincare(forcado(), amostrar('cicloidal', 30, 500), 'cicloidal')
+    expect(modelo.series[0]!.cor).toBe('cicloidal')
+  })
+})
+
+describe('graficoTemporalPorId', () => {
+  it('despacha cada identificador para o seu construtor', () => {
+    const store = new Store()
+    const amostras = amostrar('simples', 20, 200)
+    const ids = GRAFICOS_TEMPORAIS.map(
+      (id) => graficoTemporalPorId(id, store, amostras, 'simples').id,
+    )
+    expect(ids).toEqual(['temporal', 'energia', 'retrato-de-fase', 'poincare'])
+  })
+})
+
+describe('nota de amostras ausentes nos gráficos temporais', () => {
+  const vazio = new Store()
+
+  it('explica que a fórmula fechada não produz série temporal', () => {
+    // FONTE = formula é o padrão: sem a nota, o painel em branco pareceria defeito.
+    expect(vazio.texto('fonteMovimento')).toBe('formula')
+    for (const modelo of [
+      graficoTemporal(vazio, [], 'simples'),
+      graficoEnergia(vazio, [], 'simples'),
+      graficoRetratoDeFase(vazio, [], 'simples'),
+    ]) {
+      expect(modelo.descricao).toContain('Exige FONTE = integração numérica')
+    }
+  })
+
+  it('sob integração, apenas avisa que a simulação ainda não avançou', () => {
+    const store = new Store({ fonteMovimento: 'integracao' })
+    const modelo = graficoTemporal(store, [], 'simples')
+    expect(modelo.descricao).toContain('Aguardando a simulação avançar')
+    expect(modelo.descricao).not.toContain('Exige FONTE')
+  })
+
+  it('com amostras suficientes a nota some', () => {
+    const modelo = graficoTemporal(vazio, amostrar('simples', 20, 50), 'simples')
+    expect(modelo.descricao).toBe('Ângulo, velocidade angular e aceleração da massa.')
   })
 })

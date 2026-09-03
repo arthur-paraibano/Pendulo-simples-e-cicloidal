@@ -85,7 +85,7 @@ test.describe('Fase 6 — tabela de coleta', () => {
     await expect.poll(() => linhas.count(), { timeout: 3_000 }).toBeGreaterThan(quantidadePausada)
     await page.getByRole('button', { name: 'Pausar coleta automática' }).click()
 
-    await page.getByLabel('Grandeza medida').selectOption('meioPeriodo')
+    await page.getByLabel('Grandeza medida pelo sensor').selectOption('meioPeriodo')
     await page.getByLabel('Pêndulo para coleta manual').selectOption('simples')
     await page.getByRole('button', { name: 'Coletar agora' }).click()
     await expect(page.getByRole('columnheader', { name: /T — meio período \(s\)/ })).toBeVisible()
@@ -165,7 +165,7 @@ test.describe('Fase 6 — tabela de coleta', () => {
     await expect(ordenarAlpha).toBeFocused()
     await expect.poll(() => rolagem.evaluate((elemento) => elemento.scrollLeft)).toBe(180)
 
-    const grandeza = page.getByLabel('Grandeza medida')
+    const grandeza = page.getByLabel('Grandeza medida pelo sensor')
     await grandeza.focus()
     await rolagem.evaluate((elemento) => { elemento.scrollLeft = 180 })
     await grandeza.selectOption('meioPeriodo')

@@ -71,6 +71,7 @@ test.describe('Fase 4 — cena em Canvas', () => {
   })
 
   test('reproduz, pausa e atualiza o diagnóstico sem erros', async ({ page }) => {
+    const cena = page.getByLabel('Cena do pêndulo')
     const descricao = page.locator('.cena-overlay')
     const inicial = await descricao.getAttribute('aria-label')
     await page.getByRole('button', { name: 'Reproduzir' }).click()
@@ -81,14 +82,17 @@ test.describe('Fase 4 — cena em Canvas', () => {
     await page.getByRole('button', { name: 'Pausar' }).click()
     await expect(page.getByText('Simulação pausada')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Passo' })).not.toHaveAttribute('aria-pressed')
-    await expect(page.getByRole('button', { name: 'Zerar' })).not.toHaveAttribute('aria-pressed')
+    await expect(cena.getByRole('button', { name: 'Zerar' })).not.toHaveAttribute('aria-pressed')
   })
 
   test('separa parar de zerar e preserva a execução ao zerar', async ({ page }) => {
+    // Ancorado na cena: o painel de instrumentos também tem um botão de zerar,
+    // e os dois zeram coisas diferentes.
+    const cena = page.getByLabel('Cena do pêndulo')
     const descricao = page.locator('.cena-overlay')
     await page.getByRole('button', { name: 'Reproduzir' }).click()
     await page.waitForTimeout(150)
-    await page.getByRole('button', { name: 'Zerar' }).click()
+    await cena.getByRole('button', { name: 'Zerar' }).click()
     await expect(page.getByText('Simulação em movimento')).toBeVisible()
     await expect(descricao).toHaveAttribute('aria-label', /tempo 0\./)
     await page.getByRole('button', { name: 'Parar' }).click()
