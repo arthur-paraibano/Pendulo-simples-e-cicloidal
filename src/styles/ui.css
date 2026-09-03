@@ -25,6 +25,21 @@
 #cabecalho span, #cabecalho p { color: var(--cor-texto-suave); }
 #cabecalho p { margin: 0; font-size: var(--tam-texto-pequeno); }
 
+/* O seletor de idioma vai para a borda direita; sem isto, o `space-between` do
+   cabeçalho o encaixaria entre o título e o subtítulo. */
+#cabecalho .cabecalho-acoes { order: 3; margin-left: auto; }
+#cabecalho p { order: 2; }
+
+.seletor-idioma {
+  min-height: 36px;
+  padding-inline: var(--esp-2);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-size: var(--tam-texto-pequeno);
+}
+
 #seletor-visualizacao {
   grid-column: 1 / -1;
   display: flex;

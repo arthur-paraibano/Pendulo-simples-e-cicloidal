@@ -24,7 +24,10 @@ import { criarTabelaColeta } from './ui/data-table.js'
 import { criarPainelGraficos } from './ui/panels/graficos.js'
 import { criarPainelMedicoes } from './ui/panels/medicoes.js'
 import { criarPainelCenarios } from './ui/panels/cenarios.js'
+import { criarPainelDiagnostico } from './ui/panels/diagnostico.js'
+import { configurarAcessibilidade, criarSkipLinks, navegarTabelaPorTeclado } from './ui/a11y.js'
 import { sincronizarEndereco } from './state/endereco.js'
+import { t } from './i18n/index.js'
 
 ;(globalThis as typeof globalThis & { katex: KatexGlobal }).katex = katexRuntime
 
@@ -111,8 +114,8 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     <div class="cena-cabecalho">
       <div><h1 class="cena-titulo">Pêndulo — cena física</h1><p class="cena-subtitulo">Três camadas Canvas: geometria, rastro incremental e movimento.</p></div>
       <div class="cena-controles" aria-label="Controles da animação">
-        <button type="button" data-acao="reproduzir">Reproduzir</button><button type="button" data-acao="pausar">Pausar</button>
-        <button type="button" data-acao="passo">Passo</button><button type="button" data-acao="parar">Parar</button><button type="button" data-acao="zerar">Zerar</button>
+        <button type="button" data-acao="reproduzir"></button><button type="button" data-acao="pausar"></button>
+        <button type="button" data-acao="passo"></button><button type="button" data-acao="parar"></button><button type="button" data-acao="zerar"></button>
       </div>
     </div>
     <div id="palco-pendulo"></div>
@@ -123,6 +126,15 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const saidaDiagnostico = secaoCena.querySelector<HTMLOutputElement>('#diagnostico-cena')!
   const store = new Store()
   const avisosUrl = aplicarAoStore(store, window.location.hash)
+  const ACOES_CENA = ['reproduzir', 'pausar', 'passo', 'parar', 'zerar'] as const
+  const traduzirControlesCena = (): void => {
+    const idioma = store.texto('idioma')
+    for (const acao of ACOES_CENA) {
+      const botao = secaoCena.querySelector<HTMLButtonElement>(`[data-acao="${acao}"]`)
+      if (botao !== null) botao.textContent = t(`animacao.${acao}` as never, undefined, idioma)
+    }
+  }
+  traduzirControlesCena()
   const cabecalho = document.querySelector<HTMLElement>('#cabecalho')
   const recipienteSeletor = document.querySelector<HTMLElement>('#seletor-visualizacao')
   const recipienteFormula = document.querySelector<HTMLElement>('#formula')
@@ -131,9 +143,54 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const recipienteGraficos = document.querySelector<HTMLElement>('#graficos')
   const recipienteMedicoes = document.querySelector<HTMLElement>('#medicoes')
   const recipienteCenarios = document.querySelector<HTMLElement>('#cenarios')
+  if (!document.querySelector('.skip-links')) {
+    document.body.prepend(criarSkipLinks())
+  }
+  const a11y = configurarAcessibilidade(store)
   if (cabecalho !== null) {
     cabecalho.hidden = false
-    cabecalho.innerHTML = '<div><strong>Pêndulo</strong><span>Fórmula Completa</span></div><p>Uma fórmula-motor, dois regimes físicos.</p>'
+    const idiomaAtual = (): string => store.texto('idioma')
+    cabecalho.innerHTML = `
+      <div class="cabecalho-principal">
+        <strong data-i18n="geral.titulo"></strong>
+      </div>
+      <div class="cabecalho-acoes">
+        <label for="seletor-idioma-cabecalho" class="sr-only">Trocar idioma</label>
+        <select id="seletor-idioma-cabecalho" class="seletor-idioma" title="Trocar idioma">
+          <option value="pt-BR">Português (BR)</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </div>
+      <p data-i18n="geral.subtitulo"></p>
+    `
+    /**
+     * Aplica o dicionário aos nós marcados com `data-i18n`.
+     *
+     * Marcar o nó em vez de reconstruir o cabeçalho inteiro preserva o foco: o
+     * seletor de idioma está dentro dele, e recriá-lo tiraria o foco do
+     * controle que o usuário acabou de usar.
+     */
+    const traduzirCabecalho = (): void => {
+      for (const no of cabecalho.querySelectorAll<HTMLElement>('[data-i18n]')) {
+        const chave = no.dataset['i18n']
+        if (chave !== undefined) no.textContent = t(chave as never, undefined, idiomaAtual())
+      }
+    }
+    traduzirCabecalho()
+
+    const seletorIdioma = cabecalho.querySelector<HTMLSelectElement>('#seletor-idioma-cabecalho')
+    if (seletorIdioma !== null) {
+      seletorIdioma.value = store.texto('idioma')
+      seletorIdioma.addEventListener('change', () => {
+        store.definirParametro('idioma', seletorIdioma.value)
+      })
+      store.assinar(['idioma'], () => {
+        seletorIdioma.value = store.texto('idioma')
+        traduzirCabecalho()
+        traduzirControlesCena()
+      })
+    }
   }
   document.documentElement.dataset.tema = temaCss(store.texto('tema'))
   const camadas = new CamadasCanvas(palco)
@@ -161,6 +218,10 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const tabela = recipienteTabela === null
     ? null
     : criarTabelaColeta(recipienteTabela, store, runtime, { anunciar })
+  // O cancelamento precisa ser guardado: sem ele, o ouvinte de teclado
+  // sobreviveria ao desmonte e continuaria movendo o foco numa tabela morta.
+  const cancelarTecladoTabela =
+    recipienteTabela === null ? null : navegarTabelaPorTeclado(recipienteTabela)
   const painel = recipienteParametros === null ? null : criarPainelParametros(recipienteParametros, store, anunciar)
   const graficos =
     recipienteGraficos === null ? null : criarPainelGraficos(recipienteGraficos, store, runtime)
@@ -173,6 +234,7 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
           anunciar,
           telaDaCena: () => camadas.compor(),
         })
+  const painelDiagnostico = criarPainelDiagnostico(secaoCena)
   // O endereco so passa a ser publicado depois que a URL de entrada ja foi
   // aplicada: publicar antes reescreveria o estado recebido com o padrao.
   const endereco = sincronizarEndereco(store)
@@ -181,7 +243,12 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
   const atualizarEstadoControles = (): void => {
     const execucao = store.texto('execucao')
     const aviso = runtime.erroVisivel ?? avisosUrl[0]?.mensagem
-    const texto = aviso ?? (execucao === 'rodando' ? 'Simulação em movimento' : execucao === 'pausado' ? 'Simulação pausada' : 'Simulação parada')
+    const idioma = store.texto('idioma')
+    const chaveEstado =
+      execucao === 'rodando' ? 'animacao.emMovimento'
+      : execucao === 'pausado' ? 'animacao.pausada'
+      : 'animacao.parada'
+    const texto = aviso ?? t(chaveEstado as never, undefined, idioma)
     const chave = `${execucao}|${texto}`
     if (chave === chaveEstadoControles) return
     chaveEstadoControles = chave
@@ -209,6 +276,8 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     graficos?.atualizar()
     medicoes?.atualizar()
     diagnostico.adicionar(dt, tempos)
+    painelDiagnostico.registrarQuadro(dt, tempos)
+    painelDiagnostico.atualizar(agora)
     if (agora - ultimoDiagnostico >= 1000) {
       ultimoDiagnostico = agora
       saidaDiagnostico.value = diagnostico.texto()
@@ -292,6 +361,9 @@ export function iniciarAplicacao(secaoCena: HTMLElement): () => void {
     tabela?.destruir()
     consoleParametros?.destruir()
     painel?.destruir()
+    painelDiagnostico.destruir()
+    cancelarTecladoTabela?.()
+    a11y.destruir()
     secaoCena.removeEventListener('click', aoClicarControle)
     document.removeEventListener('visibilitychange', aoMudarVisibilidade)
     window.removeEventListener('pagehide', aoOcultarPagina)

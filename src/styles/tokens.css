@@ -210,6 +210,87 @@
   }
 }
 
+:root[data-movimento-reduzido='true'] {
+  --duracao-rapida: 0ms;
+  --duracao-media: 0ms;
+}
+
+/* ── Paleta segura para daltonismo (RF-121) ───────────────────────────── */
+:root[data-paleta-daltonismo='true'] {
+  --cor-pendulo-simples: #d55e00;     /* Vermillion de alto contraste */
+  --cor-pendulo-cicloidal: #0072b2;   /* Azul de alto contraste */
+  --cor-referencia-t0: #56b4e9;       /* Azul celeste */
+  --cor-valor-exato: #009e73;         /* Verde azulado */
+  --cor-acento: #0072b2;
+  --cor-energia-cinetica: #0072b2;
+  --cor-energia-potencial: #cc79a7;   /* Roxo avermelhado */
+  --cor-energia-termica: #e69f00;     /* Laranja amarelado */
+}
+
+/* ── Densidade da interface (P107) ────────────────────────────────────── */
+:root[data-densidade='compacta'] {
+  --tam-texto-pequeno: 0.75rem;
+  --tam-texto: 0.875rem;
+  --tam-texto-grande: 1rem;
+  --tam-titulo: 1.25rem;
+  --esp-2: 0.375rem;
+  --esp-3: 0.5rem;
+  --esp-4: 0.75rem;
+}
+
+:root[data-densidade='ampliada'] {
+  --tam-texto-pequeno: 0.9375rem;
+  --tam-texto: 1.0625rem;
+  --tam-texto-grande: 1.25rem;
+  --tam-titulo: 1.625rem;
+  --esp-2: 0.625rem;
+  --esp-3: 0.875rem;
+  --esp-4: 1.25rem;
+}
+
+/* ── Utilitários de Acessibilidade (T117, T118) ────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.skip-links {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  background: var(--cor-acento);
+  color: var(--cor-texto-inverso);
+  padding: var(--esp-2) var(--esp-4);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 var(--raio) var(--raio);
+}
+
+.skip-link:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  left: auto;
+  outline: var(--largura-foco) solid var(--cor-foco);
+}
+
 /* ── Base ─────────────────────────────────────────────────────────────── */
 *,
 *::before,
@@ -235,3 +316,4 @@ body {
   outline: var(--largura-foco) solid var(--cor-foco);
   outline-offset: 2px;
 }
+
