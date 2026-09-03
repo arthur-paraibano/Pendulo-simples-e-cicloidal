@@ -4,6 +4,7 @@ import {
   listaDeTexto,
   graficoConvergencia,
   graficoPoincare,
+  serieDeMedicoes,
   graficoTemporalPorId,
   GRAFICOS_TEMPORAIS,
   graficoEnergia,
@@ -18,7 +19,7 @@ import { Store } from '../../src/state/store.js'
 import { MotorPendulo } from '../../src/physics/engine.js'
 import { dinamicaIdeal } from '../../src/physics/ode.js'
 import { G_TERRA } from '../../src/physics/constants.js'
-import { deg, grausParaRad, kg, metro } from '../../src/physics/units.js'
+import { deg, grausParaRad, kg, metro, segundo } from '../../src/physics/units.js'
 
 const g = (graus: number) => grausParaRad(deg(graus))
 
@@ -493,5 +494,59 @@ describe('nota de amostras ausentes nos gráficos temporais', () => {
   it('com amostras suficientes a nota some', () => {
     const modelo = graficoTemporal(vazio, amostrar('simples', 20, 50), 'simples')
     expect(modelo.descricao).toBe('Ângulo, velocidade angular e aceleração da massa.')
+  })
+})
+
+describe('medições projetadas sobre a curva teórica (RF-103)', () => {
+  const comMedicoes = (grandeza: 'periodoCompleto' | 'meioPeriodo' = 'periodoCompleto'): Store => {
+    const s = new Store()
+    for (const [alpha, T] of [[10, 2.0099], [45, 2.0863]] as const) {
+      s.registrarMedicao({
+        idPendulo: 'simples#1',
+        pendulo: 'simples',
+        grandeza,
+        T: segundo(grandeza === 'meioPeriodo' ? T / 2 : T),
+        alpha: g(alpha),
+        L: metro(1),
+        g: G_TERRA,
+        N: 2,
+        Tteorico: segundo(T),
+        tColeta: segundo(1),
+      })
+    }
+    return s
+  }
+
+  it('sem medições, a curva não ganha série nem nota', () => {
+    const modelo = graficoPeriodoPorAmplitude(new Store())
+    expect(modelo.series.some((s) => s.id === 'medicoes')).toBe(false)
+    expect(modelo.descricao).not.toContain('medido')
+  })
+
+  it('os pontos medidos entram por cima das curvas', () => {
+    const modelo = graficoPeriodoPorAmplitude(comMedicoes())
+    const medidos = modelo.series.at(-1)!
+    expect(medidos.id).toBe('medicoes')
+    expect(medidos.forma).toBe('pontos')
+    expect(medidos.pontos).toHaveLength(2)
+    expect(modelo.descricao).toContain('2 ponto(s) medido(s)')
+  })
+
+  it('cada ponto cai na amplitude em que foi medido', () => {
+    const pontos = graficoPeriodoPorAmplitude(comMedicoes()).series.at(-1)!.pontos
+    expect(pontos[0]!.x).toBeCloseTo(10, 4)
+    expect(pontos[0]!.y).toBeCloseTo(2.0099, 4)
+    expect(pontos[1]!.x).toBeCloseTo(45, 4)
+  })
+
+  it('meio período é normalizado para período completo antes de comparar', () => {
+    // A curva T(α) descreve o período completo; sobrepor meios períodos crus
+    // faria os pontos caírem sistematicamente na metade da curva.
+    const pontos = graficoPeriodoPorAmplitude(comMedicoes('meioPeriodo')).series.at(-1)!.pontos
+    expect(pontos[0]!.y).toBeCloseTo(2.0099, 4)
+  })
+
+  it('serieDeMedicoes devolve nulo quando não há o que projetar', () => {
+    expect(serieDeMedicoes(new Store())).toBeNull()
   })
 })

@@ -12,12 +12,12 @@ import {
 } from '../../src/state/schema.js'
 
 describe('cobertura do catálogo', () => {
-  it('declara exatamente os 113 parâmetros da spec', () => {
-    expect(PARAMETROS).toHaveLength(113)
+  it('declara exatamente os 114 parâmetros da spec', () => {
+    expect(PARAMETROS).toHaveLength(114)
   })
 
-  it('cobre todos os códigos de P01 a P113, sem buracos', () => {
-    for (let i = 1; i <= 113; i++) {
+  it('cobre todos os códigos de P01 a P114, sem buracos', () => {
+    for (let i = 1; i <= 114; i++) {
       const codigo = `P${String(i).padStart(2, '0')}`
       expect(POR_CODIGO.has(codigo), `faltando ${codigo}`).toBe(true)
     }
@@ -102,7 +102,7 @@ describe('termos de busca do console', () => {
         vistos.set(chave, p.id)
       }
     }
-    expect(vistos.size).toBeGreaterThan(113)
+    expect(vistos.size).toBeGreaterThan(114)
   })
 
   it('encontra os parâmetros centrais por várias grafias', () => {
@@ -211,7 +211,7 @@ describe('o padrão declarado sobrevive à própria validação', () => {
 describe('valoresPadrao', () => {
   it('devolve um valor para cada parâmetro', () => {
     const padroes = valoresPadrao()
-    expect(Object.keys(padroes)).toHaveLength(113)
+    expect(Object.keys(padroes)).toHaveLength(114)
     for (const p of PARAMETROS) {
       expect(padroes[p.id], `${p.codigo}`).toEqual(p.padrao)
     }

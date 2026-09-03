@@ -81,7 +81,7 @@ test.describe('Fase 4 — cena em Canvas', () => {
     await expect(descricao).not.toHaveAttribute('aria-label', inicial ?? '')
     await page.getByRole('button', { name: 'Pausar' }).click()
     await expect(page.getByText('Simulação pausada')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Passo' })).not.toHaveAttribute('aria-pressed')
+    await expect(cena.getByRole('button', { name: 'Passo' })).not.toHaveAttribute('aria-pressed')
     await expect(cena.getByRole('button', { name: 'Zerar' })).not.toHaveAttribute('aria-pressed')
   })
 

@@ -16,7 +16,7 @@ function contextoFalso(): CanvasRenderingContext2D {
     moveTo: vi.fn(funcao), lineTo: vi.fn(funcao), arc: vi.fn(funcao), rect: vi.fn(funcao),
     clip: vi.fn(funcao), stroke: vi.fn(funcao), fill: vi.fn(funcao), fillRect: vi.fn(funcao),
     clearRect: vi.fn(funcao), fillText: vi.fn(funcao), setLineDash: vi.fn(funcao),
-    setTransform: vi.fn(funcao),
+    setTransform: vi.fn(funcao), drawImage: vi.fn(funcao),
   } as unknown as CanvasRenderingContext2D
 }
 
@@ -259,6 +259,53 @@ describe('gerencia concreta das camadas', () => {
     camadas.destruir()
     expect(desconectar).toHaveBeenCalled()
     expect(criados.every((e) => e.remove.mock.calls.length > 0)).toBe(true)
+  })
+
+  it('achata as tres camadas para a imagem exportada (RF-110)', () => {
+    const recipiente = new ElementoFalso()
+    vi.stubGlobal('document', { createElement: () => new ElementoFalso() })
+    vi.stubGlobal('window', {
+      devicePixelRatio: 1,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })
+    const camadas = new CamadasCanvas(recipiente as unknown as HTMLElement, {
+      obterDpr: () => 1,
+      criarObservador: () =>
+        ({ observe: vi.fn(), disconnect: vi.fn() }) as unknown as ResizeObserver,
+    })
+    camadas.redimensionar()
+
+    // A ordem importa: so a estatica daria uma cena sem massa nem rastro.
+    const composta = camadas.compor()!
+    expect(composta.width).toBe(camadas.estatica.elemento.width)
+    const chamadas = (composta.getContext('2d')!.drawImage as ReturnType<typeof vi.fn>).mock.calls
+    expect(chamadas.map((c) => c[0])).toEqual([
+      camadas.estatica.elemento,
+      camadas.rastro.elemento,
+      camadas.dinamica.elemento,
+    ])
+
+    // Antes do primeiro dimensionamento nao ha o que compor -- por largura
+    // ou por altura, que sao zeradas juntas.
+    camadas.estatica.elemento.width = 0
+    expect(camadas.compor()).toBeNull()
+    camadas.estatica.elemento.width = 300
+    camadas.estatica.elemento.height = 0
+    expect(camadas.compor()).toBeNull()
+    camadas.estatica.elemento.height = 200
+
+    // O navegador pode recusar um contexto novo quando ha muitos canvas vivos:
+    // recusar a imagem e melhor que quebrar a pagina.
+    vi.stubGlobal('document', {
+      createElement: () => {
+        const e = new ElementoFalso()
+        e.getContext = () => null as unknown as CanvasRenderingContext2D
+        return e
+      },
+    })
+    expect(camadas.compor()).toBeNull()
+    camadas.destruir()
   })
 
   it('detecta mudança de DPR, aplica teto e limita a régua à subvista', () => {

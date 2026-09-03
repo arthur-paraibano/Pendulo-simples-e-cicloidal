@@ -56,8 +56,17 @@ describe('presets de fábrica', () => {
     expect(avisos).toHaveLength(0)
     expect(aplicados).toBeGreaterThan(0)
     expect(s.texto('modo')).toBe('cicloidal')
-    expect(s.numero('alpha')).toBe(45)
-    expect(s.numero('massasTautocrona')).toBe(3)
+    expect(s.numero('numeroPendulos')).toBe(3)
+
+    // O cenário é justamente as três alturas diferentes: soltas de 0,05 m,
+    // 0,2 m e 0,45 m, as massas chegam juntas ao ponto zero (RF-159).
+    expect(s.acoplado('h0')).toBe(false)
+    for (const [i, h] of [[1, 0.05], [2, 0.2], [3, 0.45]] as const) {
+      expect(s.numeroDoPendulo('h0', i)).toBeCloseTo(h, 6)
+    }
+    // Ângulos correspondentes na face cicloidal: asin(√(2h/L)).
+    expect(s.numeroDoPendulo('alpha', 1)).toBeCloseTo(18.4349, 3)
+    expect(s.numeroDoPendulo('alpha', 3)).toBeCloseTo(71.5651, 3)
   })
 
   it('carregar um preset por cima de outro não deixa resíduo', () => {
